@@ -11,6 +11,9 @@ pub mod types;
 pub use channel::{close_channel, open_shell, resize, write};
 pub use error::{SshError, SshResult};
 pub use events::Event;
+pub use forward::{
+    close_forward, forward_bound_port, forward_local, forward_remote, forward_socks,
+};
 pub use hostkey::KnownHosts;
 pub use session::{connect, disconnect, init, next_events, trust_host_key};
 pub use sftp::{

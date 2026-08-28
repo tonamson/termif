@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use russh::client;
@@ -24,7 +25,10 @@ pub(crate) struct Core {
 }
 
 pub(crate) struct Session {
-    pub(crate) handle: client::Handle<ClientHandler>,
+    // `tcpip_forward` (used by `-R`) takes `&mut self` on the handle, but a
+    // session is shared behind `Arc`, which cannot yield `&mut`. Tokio's
+    // `Mutex` provides Send-safe interior mutability we can hold across await.
+    pub(crate) handle: tokio::sync::Mutex<client::Handle<ClientHandler>>,
     pub(crate) host: String,
     pub(crate) port: u16,
 }
@@ -106,6 +110,38 @@ impl client::Handler for ClientHandler {
             }
         }
     }
+
+    /// The server opened a channel for a `-R` forward; pipe it to the local
+    /// destination the UI registered.
+    async fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: russh::Channel<client::Msg>,
+        _connected_address: &str,
+        _connected_port: u32,
+        originator_address: &str,
+        _originator_port: u32,
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        let Some((host, port)) = crate::session::remote_forward_target() else {
+            self.events.push(Event::Log {
+                level: "warn".into(),
+                msg: "forwarded-tcpip channel with no registered destination".into(),
+            });
+            return Ok(());
+        };
+        self.events.push(Event::Log {
+            level: "info".into(),
+            msg: format!("remote forward connection from {originator_address}"),
+        });
+
+        tokio::spawn(async move {
+            if let Ok(mut local) = tokio::net::TcpStream::connect((host.as_str(), port)).await {
+                let mut stream = channel.into_stream();
+                let _ = tokio::io::copy_bidirectional(&mut local, &mut stream).await;
+            }
+        });
+        Ok(())
+    }
 }
 
 pub async fn connect(cfg: ConnectConfig) -> SshResult<SessionId> {
@@ -162,7 +198,7 @@ pub async fn connect(cfg: ConnectConfig) -> SshResult<SessionId> {
     }
 
     let id = core.sessions.insert(Session {
-        handle,
+        handle: tokio::sync::Mutex::new(handle),
         host: cfg.host,
         port: cfg.port,
     });
@@ -177,6 +213,8 @@ pub async fn disconnect(id: SessionId) -> SshResult<()> {
         .ok_or(SshError::NoSuchSession)?;
     session
         .handle
+        .lock()
+        .await
         .disconnect(russh::Disconnect::ByApplication, "", "en")
         .await
         .ok();
@@ -220,4 +258,48 @@ pub(crate) fn session_of(id: SessionId) -> SshResult<Arc<Session>> {
 
 pub(crate) fn events() -> SshResult<Arc<EventQueue>> {
     Ok(core()?.events.clone())
+}
+
+pub(crate) struct RemoteForward {
+    pub(crate) local_host: String,
+    pub(crate) local_port: u16,
+    pub(crate) cancel: tokio_util::sync::CancellationToken,
+}
+
+static REMOTE_FORWARDS: OnceLock<Mutex<HashMap<u64, RemoteForward>>> = OnceLock::new();
+
+fn remote_forwards() -> &'static Mutex<HashMap<u64, RemoteForward>> {
+    REMOTE_FORWARDS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub(crate) fn register_remote_forward(
+    id: crate::types::ForwardId,
+    local_host: String,
+    local_port: u16,
+    cancel: tokio_util::sync::CancellationToken,
+) -> SshResult<()> {
+    remote_forwards()
+        .lock()
+        .expect("remote forwards mutex")
+        .insert(
+            id.raw(),
+            RemoteForward {
+                local_host,
+                local_port,
+                cancel,
+            },
+        );
+    Ok(())
+}
+
+/// The destination for any forwarded-tcpip channel the server opens. With a
+/// single remote forward configured this is unambiguous; with several, the
+/// first live registration wins, which matches how the UI presents them.
+pub(crate) fn remote_forward_target() -> Option<(String, u16)> {
+    remote_forwards()
+        .lock()
+        .expect("remote forwards mutex")
+        .values()
+        .find(|f| !f.cancel.is_cancelled())
+        .map(|f| (f.local_host.clone(), f.local_port))
 }

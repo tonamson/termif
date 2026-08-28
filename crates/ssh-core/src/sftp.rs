@@ -24,7 +24,13 @@ fn sftp_err<E: std::fmt::Display>(e: E) -> SshError {
 /// and channel setup is cheap next to the file I/O that follows.
 pub(crate) async fn sftp_session(session: SessionId) -> SshResult<SftpSession> {
     let sess = session_of(session)?;
-    let channel = sess.handle.channel_open_session().await.map_err(sftp_err)?;
+    let channel = sess
+        .handle
+        .lock()
+        .await
+        .channel_open_session()
+        .await
+        .map_err(sftp_err)?;
     channel
         .request_subsystem(true, "sftp")
         .await

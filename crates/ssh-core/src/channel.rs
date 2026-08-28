@@ -20,6 +20,8 @@ pub async fn open_shell(session: SessionId, pty: PtySize) -> SshResult<ChannelId
 
     let channel = sess
         .handle
+        .lock()
+        .await
         .channel_open_session()
         .await
         .map_err(|e| SshError::Connect {
