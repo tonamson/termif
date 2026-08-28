@@ -195,26 +195,26 @@ fn u64_of(v: BigInt) -> u64 {
     value
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub fn init(known_hosts_path: String) -> Result<()> {
     guard(|| ssh::init(known_hosts_path.into()).map_err(to_napi))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn connect(cfg: JsConnectConfig) -> Result<BigInt> {
     let cfg: ssh::ConnectConfig = cfg.try_into()?;
     let id = ssh::connect(cfg).await.map_err(to_napi)?;
     Ok(BigInt::from(id.raw()))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn disconnect(session_id: BigInt) -> Result<()> {
     ssh::disconnect(ssh::SessionId::from_raw(u64_of(session_id)))
         .await
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn trust_host_key(
     host: String,
     port: u16,
@@ -226,7 +226,7 @@ pub async fn trust_host_key(
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn open_shell(session_id: BigInt, cols: u16, rows: u16) -> Result<BigInt> {
     let pty = ssh::PtySize {
         cols,
@@ -240,14 +240,14 @@ pub async fn open_shell(session_id: BigInt, cols: u16, rows: u16) -> Result<BigI
     Ok(BigInt::from(id.raw()))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn write(channel_id: BigInt, data: Buffer) -> Result<()> {
     ssh::write(ssh::ChannelId::from_raw(u64_of(channel_id)), data.to_vec())
         .await
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn resize(channel_id: BigInt, cols: u16, rows: u16) -> Result<()> {
     let pty = ssh::PtySize {
         cols,
@@ -260,14 +260,14 @@ pub async fn resize(channel_id: BigInt, cols: u16, rows: u16) -> Result<()> {
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn close_channel(channel_id: BigInt) -> Result<()> {
     ssh::close_channel(ssh::ChannelId::from_raw(u64_of(channel_id)))
         .await
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn sftp_list(session_id: BigInt, path: String) -> Result<Vec<JsDirEntry>> {
     let entries = ssh::sftp_list(ssh::SessionId::from_raw(u64_of(session_id)), path)
         .await
@@ -275,7 +275,7 @@ pub async fn sftp_list(session_id: BigInt, path: String) -> Result<Vec<JsDirEntr
     Ok(entries.into_iter().map(Into::into).collect())
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn sftp_stat(session_id: BigInt, path: String) -> Result<JsDirEntry> {
     let entry = ssh::sftp_stat(ssh::SessionId::from_raw(u64_of(session_id)), path)
         .await
@@ -283,21 +283,21 @@ pub async fn sftp_stat(session_id: BigInt, path: String) -> Result<JsDirEntry> {
     Ok(entry.into())
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn sftp_mkdir(session_id: BigInt, path: String) -> Result<()> {
     ssh::sftp_mkdir(ssh::SessionId::from_raw(u64_of(session_id)), path)
         .await
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn sftp_rename(session_id: BigInt, from: String, to: String) -> Result<()> {
     ssh::sftp_rename(ssh::SessionId::from_raw(u64_of(session_id)), from, to)
         .await
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn sftp_remove(session_id: BigInt, path: String, recursive: bool) -> Result<()> {
     ssh::sftp_remove(
         ssh::SessionId::from_raw(u64_of(session_id)),
@@ -308,7 +308,7 @@ pub async fn sftp_remove(session_id: BigInt, path: String, recursive: bool) -> R
     .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn sftp_read_range(
     session_id: BigInt,
     path: String,
@@ -326,7 +326,7 @@ pub async fn sftp_read_range(
     Ok(Buffer::from(bytes))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn sftp_upload(session_id: BigInt, local: String, remote: String) -> Result<BigInt> {
     let id = ssh::sftp_upload(ssh::SessionId::from_raw(u64_of(session_id)), local, remote)
         .await
@@ -334,7 +334,7 @@ pub async fn sftp_upload(session_id: BigInt, local: String, remote: String) -> R
     Ok(BigInt::from(id.raw()))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn sftp_download(session_id: BigInt, remote: String, local: String) -> Result<BigInt> {
     let id = ssh::sftp_download(ssh::SessionId::from_raw(u64_of(session_id)), remote, local)
         .await
@@ -342,14 +342,14 @@ pub async fn sftp_download(session_id: BigInt, remote: String, local: String) ->
     Ok(BigInt::from(id.raw()))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn cancel_transfer(transfer_id: BigInt) -> Result<()> {
     ssh::cancel_transfer(ssh::TransferId::from_raw(u64_of(transfer_id)))
         .await
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn forward_local(
     session_id: BigInt,
     local_bind: String,
@@ -367,7 +367,7 @@ pub async fn forward_local(
     Ok(BigInt::from(id.raw()))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn forward_remote(
     session_id: BigInt,
     remote_bind_host: String,
@@ -387,7 +387,7 @@ pub async fn forward_remote(
     Ok(BigInt::from(id.raw()))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn forward_socks(session_id: BigInt, local_bind: String) -> Result<BigInt> {
     let id = ssh::forward_socks(ssh::SessionId::from_raw(u64_of(session_id)), local_bind)
         .await
@@ -395,21 +395,21 @@ pub async fn forward_socks(session_id: BigInt, local_bind: String) -> Result<Big
     Ok(BigInt::from(id.raw()))
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn forward_bound_port(forward_id: BigInt) -> Result<u16> {
     ssh::forward_bound_port(ssh::ForwardId::from_raw(u64_of(forward_id)))
         .await
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn close_forward(forward_id: BigInt) -> Result<()> {
     ssh::close_forward(ssh::ForwardId::from_raw(u64_of(forward_id)))
         .await
         .map_err(to_napi)
 }
 
-#[napi]
+#[napi(catch_unwind)]
 pub async fn next_events(timeout_ms: u32) -> Vec<JsEvent> {
     ssh::next_events(timeout_ms)
         .await
