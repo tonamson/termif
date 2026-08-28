@@ -1,0 +1,15 @@
+[workspace]
+members = ["crates/ssh-core", "crates/ffi-napi"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.78"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "fs", "macros"] }
+russh = "0.54"
+russh-sftp = "2"
+thiserror = "2"
+tracing = "0.1"
+async-trait = "0.1"
