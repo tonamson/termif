@@ -1,5 +1,6 @@
 mod common;
 
+use serial_test::serial;
 use ssh_core::{ConnectConfig, Credential, Event, PtySize};
 use std::time::{Duration, Instant};
 
@@ -51,6 +52,7 @@ async fn read_until(deadline: Duration, pred: impl Fn(&str) -> bool) -> String {
 }
 
 #[tokio::test]
+#[serial]
 async fn shell_echoes_a_command_result() {
     require_server!();
     let session = connected_session("shell-echo").await;
@@ -74,6 +76,7 @@ async fn shell_echoes_a_command_result() {
 }
 
 #[tokio::test]
+#[serial]
 async fn pty_size_is_applied_and_resize_takes_effect() {
     require_server!();
     let session = connected_session("shell-resize").await;
@@ -125,6 +128,7 @@ async fn pty_size_is_applied_and_resize_takes_effect() {
 }
 
 #[tokio::test]
+#[serial]
 async fn two_channels_on_one_session_are_independent() {
     require_server!();
     let session = connected_session("shell-two").await;
@@ -177,6 +181,7 @@ async fn two_channels_on_one_session_are_independent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn closing_a_channel_emits_channel_closed() {
     require_server!();
     let session = connected_session("shell-closed").await;
@@ -203,6 +208,7 @@ async fn closing_a_channel_emits_channel_closed() {
 }
 
 #[tokio::test]
+#[serial]
 async fn writing_to_an_unknown_channel_errors() {
     let mut p = std::env::temp_dir();
     p.push(format!("termif-kh-{}-nochannel", std::process::id()));
