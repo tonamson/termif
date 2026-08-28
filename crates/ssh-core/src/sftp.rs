@@ -1,8 +1,10 @@
 use russh_sftp::client::SftpSession;
 
 use crate::error::{SshError, SshResult};
-use crate::session::session_of;
-use crate::types::{DirEntry, SessionId};
+use crate::events::Event;
+use crate::session::{core, events, session_of};
+use crate::types::{DirEntry, SessionId, TransferId};
+use tokio_util::sync::CancellationToken;
 
 /// Cap on `sftp_read_range`, whose result crosses FFI into a JS buffer. Bulk
 /// movement goes through upload/download, which never materialises a whole
@@ -148,4 +150,193 @@ pub async fn sftp_read_range(
     buf.truncate(filled);
     sftp.close().await.ok();
     Ok(buf)
+}
+
+/// Progress is reported at most this often, so a fast transfer does not flood
+/// the event queue with thousands of updates the UI cannot draw anyway.
+const PROGRESS_INTERVAL: std::time::Duration = std::time::Duration::from_millis(250);
+const CHUNK: usize = 64 * 1024;
+
+pub async fn sftp_upload(
+    session: SessionId,
+    local: String,
+    remote: String,
+) -> SshResult<TransferId> {
+    let core = core()?;
+    let cancel = CancellationToken::new();
+    let id_raw = core.transfers.insert(TransferEntry {
+        cancel: cancel.clone(),
+    });
+    let id = TransferId::from_raw(id_raw);
+    let queue = events()?;
+
+    core.runtime.spawn(async move {
+        let result = upload_inner(session, &local, &remote, id, &queue, &cancel).await;
+        let error = result.err().map(|e| e.to_string());
+        queue.push(Event::TransferDone {
+            transfer_id: id,
+            error,
+        });
+        core.transfers.remove(id.raw());
+    });
+
+    Ok(id)
+}
+
+async fn upload_inner(
+    session: SessionId,
+    local: &str,
+    remote: &str,
+    id: TransferId,
+    queue: &std::sync::Arc<crate::events::EventQueue>,
+    cancel: &CancellationToken,
+) -> SshResult<()> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let mut src = tokio::fs::File::open(local).await?;
+    let total = src.metadata().await?.len();
+
+    let sftp = sftp_session(session).await?;
+    let mut dst = sftp.create(remote).await.map_err(sftp_err)?;
+
+    let mut buf = vec![0u8; CHUNK];
+    let mut done: u64 = 0;
+    let mut last_report = std::time::Instant::now();
+
+    loop {
+        if cancel.is_cancelled() {
+            // Leave the partial remote file in place but report the failure;
+            // deciding whether to delete it is the UI's call, not ours.
+            return Err(SshError::Sftp {
+                msg: "transfer cancelled".into(),
+            });
+        }
+        let n = src.read(&mut buf).await?;
+        if n == 0 {
+            break;
+        }
+        dst.write_all(&buf[..n]).await.map_err(sftp_err)?;
+        done += n as u64;
+
+        if last_report.elapsed() >= PROGRESS_INTERVAL {
+            queue.push(Event::TransferProgress {
+                transfer_id: id,
+                done,
+                total,
+            });
+            last_report = std::time::Instant::now();
+        }
+    }
+
+    dst.sync_all().await.map_err(sftp_err)?;
+    dst.shutdown().await.map_err(sftp_err)?;
+    sftp.close().await.ok();
+
+    queue.push(Event::TransferProgress {
+        transfer_id: id,
+        done,
+        total,
+    });
+    Ok(())
+}
+
+pub async fn sftp_download(
+    session: SessionId,
+    remote: String,
+    local: String,
+) -> SshResult<TransferId> {
+    let core = core()?;
+    let cancel = CancellationToken::new();
+    let id_raw = core.transfers.insert(TransferEntry {
+        cancel: cancel.clone(),
+    });
+    let id = TransferId::from_raw(id_raw);
+    let queue = events()?;
+
+    core.runtime.spawn(async move {
+        let result = download_inner(session, &remote, &local, id, &queue, &cancel).await;
+        let error = result.err().map(|e| e.to_string());
+        queue.push(Event::TransferDone {
+            transfer_id: id,
+            error,
+        });
+        core.transfers.remove(id.raw());
+    });
+
+    Ok(id)
+}
+
+async fn download_inner(
+    session: SessionId,
+    remote: &str,
+    local: &str,
+    id: TransferId,
+    queue: &std::sync::Arc<crate::events::EventQueue>,
+    cancel: &CancellationToken,
+) -> SshResult<()> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let sftp = sftp_session(session).await?;
+    let meta = sftp.metadata(remote).await.map_err(sftp_err)?;
+    let total = meta.size.unwrap_or(0);
+    let mut src = sftp.open(remote).await.map_err(sftp_err)?;
+
+    // Write to a sibling temp file and rename on success, so a cancelled or
+    // failed download never leaves a truncated file at the real path.
+    let tmp = format!("{local}.part");
+    if let Some(parent) = std::path::Path::new(local).parent() {
+        tokio::fs::create_dir_all(parent).await.ok();
+    }
+    let mut dst = tokio::fs::File::create(&tmp).await?;
+
+    let mut buf = vec![0u8; CHUNK];
+    let mut done: u64 = 0;
+    let mut last_report = std::time::Instant::now();
+
+    loop {
+        if cancel.is_cancelled() {
+            drop(dst);
+            tokio::fs::remove_file(&tmp).await.ok();
+            return Err(SshError::Sftp {
+                msg: "transfer cancelled".into(),
+            });
+        }
+        let n = src.read(&mut buf).await.map_err(sftp_err)?;
+        if n == 0 {
+            break;
+        }
+        dst.write_all(&buf[..n]).await?;
+        done += n as u64;
+
+        if last_report.elapsed() >= PROGRESS_INTERVAL {
+            queue.push(Event::TransferProgress {
+                transfer_id: id,
+                done,
+                total,
+            });
+            last_report = std::time::Instant::now();
+        }
+    }
+
+    dst.flush().await?;
+    dst.sync_all().await?;
+    drop(dst);
+    tokio::fs::rename(&tmp, local).await?;
+    sftp.close().await.ok();
+
+    queue.push(Event::TransferProgress {
+        transfer_id: id,
+        done,
+        total,
+    });
+    Ok(())
+}
+
+pub async fn cancel_transfer(id: TransferId) -> SshResult<()> {
+    let entry = core()?
+        .transfers
+        .get(id.raw())
+        .ok_or(SshError::NoSuchTransfer)?;
+    entry.cancel.cancel();
+    Ok(())
 }

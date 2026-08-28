@@ -14,8 +14,8 @@ pub use events::Event;
 pub use hostkey::KnownHosts;
 pub use session::{connect, disconnect, init, next_events, trust_host_key};
 pub use sftp::{
-    sftp_list, sftp_mkdir, sftp_read_range, sftp_remove, sftp_rename, sftp_stat,
-    SFTP_READ_RANGE_MAX,
+    cancel_transfer, sftp_download, sftp_list, sftp_mkdir, sftp_read_range, sftp_remove,
+    sftp_rename, sftp_stat, sftp_upload, SFTP_READ_RANGE_MAX,
 };
 pub use types::{
     ChannelId, ConnectConfig, Credential, DirEntry, ForwardId, PtySize, SessionId, TransferId,
