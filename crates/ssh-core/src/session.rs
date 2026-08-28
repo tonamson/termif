@@ -9,7 +9,7 @@ use crate::error::{SshError, SshResult};
 use crate::events::{Event, EventQueue};
 use crate::hostkey::KnownHosts;
 use crate::registry::Registry;
-use crate::types::{ChannelId, ConnectConfig, Credential, SessionId};
+use crate::types::{ConnectConfig, Credential, SessionId};
 
 /// Process-wide state. Created once by `init`, which the host application
 /// calls before anything else.
@@ -221,6 +221,3 @@ pub(crate) fn session_of(id: SessionId) -> SshResult<Arc<Session>> {
 pub(crate) fn events() -> SshResult<Arc<EventQueue>> {
     Ok(core()?.events.clone())
 }
-
-/// Placeholder so `Core` compiles before Task 7 lands its own module.
-pub(crate) fn _unused(_: ChannelId) {}

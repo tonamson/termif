@@ -8,6 +8,7 @@ pub mod session;
 pub mod sftp;
 pub mod types;
 
+pub use channel::{close_channel, open_shell, resize, write};
 pub use error::{SshError, SshResult};
 pub use events::Event;
 pub use hostkey::KnownHosts;
