@@ -1,6 +1,9 @@
 services:
   sshd:
-    image: linuxserver/openssh-server:latest
+    image: termif-ssh-test-sshd
+    build:
+      context: .
+      dockerfile: deploy/sshd-test.Dockerfile
     environment:
       - PUID=1000
       - PGID=1000
