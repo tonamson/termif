@@ -2,18 +2,20 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Rust SSH core — connect, PTY shell, SFTP, port forwarding, host key verification — and expose it identically to Electron (napi-rs) and to iOS/Android (uniffi).
+**Goal:** Build the Rust SSH core — connect, PTY shell, SFTP, port forwarding, host key verification — and expose it to Electron over napi-rs.
 
-**Architecture:** One `crates/ssh-core` holding all protocol logic behind a handle-based async API with a single event queue drained by long poll. Two thin binding crates translate types only. No JS callbacks cross the boundary; no objects cross the boundary; no panic crosses the boundary.
+**Scope revision (2026-08-28):** v1 is macOS and Windows only. The uniffi binding for iOS and Android is deferred with the rest of the mobile phase (spec §11). Task 12 is retained as a stub recording what was cut and why; the remaining 12 tasks are 1–11 and 13.
 
-**Tech Stack:** Rust, `russh`, `russh-sftp`, `tokio`, `napi-rs` v3, `uniffi` (proc-macro, no UDL), Docker `linuxserver/openssh-server` for integration tests.
+**Architecture:** One `crates/ssh-core` holding all protocol logic behind a handle-based async API with a single event queue drained by long poll. One thin binding crate (`ffi-napi`) translates types only. A second binding is deferred with the mobile phase (spec §11). No JS callbacks cross the boundary; no objects cross the boundary; no panic crosses the boundary.
+
+**Tech Stack:** Rust, `russh`, `russh-sftp`, `tokio`, `napi-rs` v3, Docker `linuxserver/openssh-server` for integration tests.
 
 **Spec:** `docs/superpowers/specs/2026-08-28-termif-crossplatform-ssh-design.md`
 
 ## Global Constraints
 
 - Rust edition 2021, MSRV 1.78.
-- `ssh-core` has **no** dependency on `napi`, `uniffi`, Electron, Node, or any platform SDK. Binding crates depend on it, never the reverse.
+- `ssh-core` has **no** dependency on `napi`, `uniffi`, Electron, Node, or any platform SDK. Binding crates depend on it, never the reverse. This holds even though `ffi-napi` is the only binding in v1: the constraint is what keeps `ssh-core` unit-testable without a Node process, and it is what a second binding would later depend on.
 - `ssh-core` reads no config file, no environment variable, and no keychain. All input arrives as function parameters. Exception: the `known_hosts` path, which is passed in at `init()`.
 - Every public async function returns `Result<T, SshError>`. No `unwrap()` or `expect()` in non-test code.
 - No panic may cross an FFI boundary: every binding entry point wraps its call in `catch_unwind` and converts a panic into `SshError::Internal`.
@@ -39,7 +41,6 @@
 | `crates/ssh-core/src/sftp.rs` | list/stat/mkdir/rename/remove, `read_range`, upload/download |
 | `crates/ssh-core/src/forward.rs` | local, remote, and dynamic (SOCKS5) forwarding |
 | `crates/ffi-napi/src/lib.rs` | `#[napi]` wrappers → `.node` |
-| `crates/ffi-uniffi/src/lib.rs` | `#[uniffi::export]` wrappers → XCFramework / `.so` |
 | `crates/ssh-core/tests/common/mod.rs` | Docker sshd fixture helpers |
 | `crates/ssh-core/tests/*.rs` | Integration tests per area |
 | `.github/workflows/rust.yml` | Build all targets, run integration tests |
@@ -63,7 +64,7 @@
 
 ```toml
 [workspace]
-members = ["crates/ssh-core", "crates/ffi-napi", "crates/ffi-uniffi"]
+members = ["crates/ssh-core", "crates/ffi-napi"]
 resolver = "2"
 
 [workspace.package]
@@ -92,7 +93,6 @@ Append to `.gitignore`:
 ```
 target/
 *.node
-crates/ffi-uniffi/out/
 ```
 
 - [ ] **Step 2: Write the failing test for error conversion**
@@ -2487,7 +2487,7 @@ git commit -m "feat(ssh-core): add SFTP upload and download with progress and ca
   - `pub(crate) struct ForwardEntry { cancel, bound_port }`
   - `pub async fn forward_bound_port(id: ForwardId) -> SshResult<u16>` — resolves port 0 to the OS-assigned port, which tests and the UI both need.
 
-Note on scope: the spec's platform table (§5) says iOS can only hold a local listener in the foreground. That is an OS constraint enforced by the shell, not by this crate — `forward_local` here simply fails with `SshError::Forward` if the bind fails, and Plan 4 Task 9 adds the iOS-specific UI treatment.
+Note on scope: the spec's platform table (§5) records that iOS can only hold a local listener in the foreground. No v1 platform has that limit, and it is a shell concern in any case, not this crate's — `forward_local` here simply fails with `SshError::Forward` if the bind fails. The optional `note` field exists on a forward for the shell to fill in; on desktop it stays empty.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2744,7 +2744,8 @@ pub async fn forward_local(
 }
 
 /// `-R`: ask the server to listen and forward back to us. No local listener is
-/// involved, which is why this works on iOS in the background (spec §5).
+/// involved, which is why a remote forward has no listening-socket problem
+/// on a mobile OS later (spec §5).
 pub async fn forward_remote(
     session: SessionId,
     remote_bind_host: String,
@@ -3558,561 +3559,47 @@ git commit -m "feat(ffi-napi): expose ssh-core to Electron via napi-rs"
 
 ---
 
-## Task 12: uniffi binding for iOS and Android
-
-**Files:**
-- Create: `crates/ffi-uniffi/Cargo.toml`, `crates/ffi-uniffi/src/lib.rs`, `crates/ffi-uniffi/uniffi.toml`
-- Create: `scripts/build-ios.sh`, `scripts/build-android.sh`
-- Test: `crates/ffi-uniffi/tests/exports.rs`
-
-**Interfaces:**
-- Consumes: the whole `ssh-core` public API.
-- Produces the same 23 functions as Task 11, named in snake_case for Kotlin/Swift, plus `SshFfiError` (a `uniffi::Error` enum carrying `code` and `message`) and `FfiEvent` (a `uniffi::Enum`).
-- Handle types cross as `u64`, which both Swift (`UInt64`) and Kotlin (`ULong`) support natively.
-- Unlike napi, uniffi supports real tagged enums, so `FfiEvent` is a proper enum rather than a flat object.
-
-- [ ] **Step 1: Write the manifests**
-
-`crates/ffi-uniffi/Cargo.toml`:
-
-```toml
-[package]
-name = "ffi-uniffi"
-version = "0.1.0"
-edition.workspace = true
-rust-version.workspace = true
-
-[lib]
-crate-type = ["cdylib", "staticlib", "lib"]
-name = "termif_ssh"
-
-[dependencies]
-ssh-core = { path = "../ssh-core" }
-uniffi = { version = "0.28", features = ["tokio"] }
-tokio.workspace = true
-
-[build-dependencies]
-uniffi = { version = "0.28", features = ["build"] }
-
-[[bin]]
-name = "uniffi-bindgen"
-path = "src/bin/uniffi-bindgen.rs"
-```
-
-`crates/ffi-uniffi/uniffi.toml`:
-
-```toml
-[bindings.swift]
-module_name = "TermifSsh"
-cdylib_name = "termif_ssh"
-
-[bindings.kotlin]
-package_name = "com.termif.ssh"
-cdylib_name = "termif_ssh"
-```
-
-`crates/ffi-uniffi/src/bin/uniffi-bindgen.rs`:
-
-```rust
-fn main() {
-    uniffi::uniffi_bindgen_main()
-}
-```
-
-- [ ] **Step 2: Write the failing test**
-
-`crates/ffi-uniffi/tests/exports.rs`:
-
-```rust
-//! Verifies the binding compiles, the scaffolding is generated, and the
-//! wrappers translate errors instead of panicking. Device-level binding tests
-//! live in the mobile app (Plan 4).
-
-use ffi_uniffi as ffi;
-
-fn init_temp(name: &str) {
-    let mut p = std::env::temp_dir();
-    p.push(format!("termif-uniffi-kh-{}-{}", std::process::id(), name));
-    let _ = std::fs::remove_file(&p);
-    ffi::init(p.to_string_lossy().to_string()).expect("init");
-}
-
-#[tokio::test]
-async fn stale_session_handle_returns_a_coded_error() {
-    init_temp("stale");
-    let err = ffi::disconnect(999_999).await.expect_err("stale handle must not resolve");
-    assert_eq!(err.code(), "no_such_session");
-}
-
-#[tokio::test]
-async fn next_events_returns_empty_when_idle() {
-    init_temp("idle");
-    let events = ffi::next_events(150).await;
-    assert!(events.is_empty());
-}
-
-#[tokio::test]
-async fn connect_config_requires_exactly_one_credential() {
-    init_temp("cred");
-    let err = ffi::connect(ffi::FfiConnectConfig {
-        host: "127.0.0.1".into(),
-        port: 22,
-        username: "nobody".into(),
-        password: Some("a".into()),
-        private_key_pem: Some("b".into()),
-        passphrase: None,
-        connect_timeout_ms: 1000,
-        keepalive_secs: 30,
-    })
-    .await
-    .expect_err("two credentials is a programming error");
-    assert_eq!(err.code(), "auth");
-}
-
-#[tokio::test]
-async fn scaffolding_symbol_is_present() {
-    // uniffi::setup_scaffolding! generates this; its absence means the macro
-    // did not run and no bindings would be produced.
-    init_temp("scaffold");
-    assert!(ffi::uniffi_scaffolding_present());
-}
-```
-
-- [ ] **Step 3: Run to see it fail**
-
-Run: `cargo test -p ffi-uniffi`
-Expected: FAIL — `crates/ffi-uniffi/src/lib.rs` does not exist.
-
-- [ ] **Step 4: Write the binding**
-
-`crates/ffi-uniffi/src/lib.rs`:
-
-```rust
-//! Thin translation layer for Swift and Kotlin. Same rules as ffi-napi: types
-//! only, no logic, and no panic crosses the boundary (spec §7).
-
-use ssh_core as core;
-
-uniffi::setup_scaffolding!();
-
-#[derive(Debug, Clone, thiserror::Error, uniffi::Error)]
-pub enum SshFfiError {
-    #[error("{code}: {message}")]
-    Failed { code: String, message: String },
-}
-
-impl SshFfiError {
-    pub fn code(&self) -> &str {
-        match self {
-            SshFfiError::Failed { code, .. } => code,
-        }
-    }
-}
-
-impl From<core::SshError> for SshFfiError {
-    fn from(e: core::SshError) -> Self {
-        SshFfiError::Failed { code: e.code().to_string(), message: e.to_string() }
-    }
-}
-
-type FfiResult<T> = std::result::Result<T, SshFfiError>;
-
-fn guard<T>(f: impl FnOnce() -> FfiResult<T>) -> FfiResult<T> {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
-        Ok(r) => r,
-        Err(_) => Err(SshFfiError::Failed {
-            code: "internal".into(),
-            message: "panic in ssh-core".into(),
-        }),
-    }
-}
-
-#[derive(uniffi::Record)]
-pub struct FfiConnectConfig {
-    pub host: String,
-    pub port: u16,
-    pub username: String,
-    /// Exactly one of `password` or `private_key_pem` must be set.
-    pub password: Option<String>,
-    pub private_key_pem: Option<String>,
-    pub passphrase: Option<String>,
-    pub connect_timeout_ms: u32,
-    pub keepalive_secs: u32,
-}
-
-impl TryFrom<FfiConnectConfig> for core::ConnectConfig {
-    type Error = SshFfiError;
-
-    fn try_from(c: FfiConnectConfig) -> FfiResult<Self> {
-        let credential = match (c.password, c.private_key_pem) {
-            (Some(password), None) => core::Credential::Password { password },
-            (None, Some(pem)) => core::Credential::Key { pem, passphrase: c.passphrase },
-            _ => {
-                return Err(SshFfiError::Failed {
-                    code: "auth".into(),
-                    message: "set exactly one of password or privateKeyPem".into(),
-                })
-            }
-        };
-        Ok(core::ConnectConfig {
-            host: c.host,
-            port: c.port,
-            username: c.username,
-            credential,
-            connect_timeout_ms: c.connect_timeout_ms,
-            keepalive_secs: c.keepalive_secs,
-        })
-    }
-}
-
-#[derive(uniffi::Record)]
-pub struct FfiDirEntry {
-    pub name: String,
-    pub size: u64,
-    pub is_dir: bool,
-    pub is_symlink: bool,
-    pub mode: u32,
-    pub modified_unix: i64,
-}
-
-impl From<core::DirEntry> for FfiDirEntry {
-    fn from(e: core::DirEntry) -> Self {
-        Self {
-            name: e.name,
-            size: e.size,
-            is_dir: e.is_dir,
-            is_symlink: e.is_symlink,
-            mode: e.mode,
-            modified_unix: e.modified_unix,
-        }
-    }
-}
-
-/// A real tagged enum, unlike the flat napi shape, because uniffi maps this
-/// cleanly onto a Swift and Kotlin sealed type.
-#[derive(uniffi::Enum)]
-pub enum FfiEvent {
-    ChannelData { channel_id: u64, bytes: Vec<u8> },
-    ChannelClosed { channel_id: u64, exit_status: Option<u32> },
-    SessionClosed { session_id: u64, reason: String },
-    TransferProgress { transfer_id: u64, done: u64, total: u64 },
-    TransferDone { transfer_id: u64, error: Option<String> },
-    ForwardAccepted { forward_id: u64, peer: String },
-    Log { level: String, msg: String },
-}
-
-impl From<core::Event> for FfiEvent {
-    fn from(e: core::Event) -> Self {
-        use core::Event as E;
-        match e {
-            E::ChannelData { channel_id, bytes } => {
-                FfiEvent::ChannelData { channel_id: channel_id.raw(), bytes }
-            }
-            E::ChannelClosed { channel_id, exit_status } => {
-                FfiEvent::ChannelClosed { channel_id: channel_id.raw(), exit_status }
-            }
-            E::SessionClosed { session_id, reason } => {
-                FfiEvent::SessionClosed { session_id: session_id.raw(), reason }
-            }
-            E::TransferProgress { transfer_id, done, total } => {
-                FfiEvent::TransferProgress { transfer_id: transfer_id.raw(), done, total }
-            }
-            E::TransferDone { transfer_id, error } => {
-                FfiEvent::TransferDone { transfer_id: transfer_id.raw(), error }
-            }
-            E::ForwardAccepted { forward_id, peer } => {
-                FfiEvent::ForwardAccepted { forward_id: forward_id.raw(), peer }
-            }
-            E::Log { level, msg } => FfiEvent::Log { level, msg },
-        }
-    }
-}
-
-#[uniffi::export]
-pub fn init(known_hosts_path: String) -> FfiResult<()> {
-    guard(|| core::init(known_hosts_path.into()).map_err(Into::into))
-}
-
-/// Present so a test can assert the scaffolding macro actually ran.
-#[uniffi::export]
-pub fn uniffi_scaffolding_present() -> bool {
-    true
-}
-
-#[uniffi::export]
-pub async fn connect(cfg: FfiConnectConfig) -> FfiResult<u64> {
-    let cfg: core::ConnectConfig = cfg.try_into()?;
-    Ok(core::connect(cfg).await?.raw())
-}
-
-#[uniffi::export]
-pub async fn disconnect(session_id: u64) -> FfiResult<()> {
-    Ok(core::disconnect(core::SessionId::from_raw(session_id)).await?)
-}
-
-#[uniffi::export]
-pub async fn trust_host_key(
-    host: String,
-    port: u16,
-    algo: String,
-    fingerprint: String,
-) -> FfiResult<()> {
-    Ok(core::trust_host_key(host, port, algo, fingerprint).await?)
-}
-
-#[uniffi::export]
-pub async fn open_shell(session_id: u64, cols: u16, rows: u16) -> FfiResult<u64> {
-    let pty = core::PtySize { cols, rows, pixel_width: 0, pixel_height: 0 };
-    Ok(core::open_shell(core::SessionId::from_raw(session_id), pty).await?.raw())
-}
-
-#[uniffi::export]
-pub async fn write(channel_id: u64, data: Vec<u8>) -> FfiResult<()> {
-    Ok(core::write(core::ChannelId::from_raw(channel_id), data).await?)
-}
-
-#[uniffi::export]
-pub async fn resize(channel_id: u64, cols: u16, rows: u16) -> FfiResult<()> {
-    let pty = core::PtySize { cols, rows, pixel_width: 0, pixel_height: 0 };
-    Ok(core::resize(core::ChannelId::from_raw(channel_id), pty).await?)
-}
-
-#[uniffi::export]
-pub async fn close_channel(channel_id: u64) -> FfiResult<()> {
-    Ok(core::close_channel(core::ChannelId::from_raw(channel_id)).await?)
-}
-
-#[uniffi::export]
-pub async fn sftp_list(session_id: u64, path: String) -> FfiResult<Vec<FfiDirEntry>> {
-    let entries = core::sftp_list(core::SessionId::from_raw(session_id), path).await?;
-    Ok(entries.into_iter().map(Into::into).collect())
-}
-
-#[uniffi::export]
-pub async fn sftp_stat(session_id: u64, path: String) -> FfiResult<FfiDirEntry> {
-    Ok(core::sftp_stat(core::SessionId::from_raw(session_id), path).await?.into())
-}
-
-#[uniffi::export]
-pub async fn sftp_mkdir(session_id: u64, path: String) -> FfiResult<()> {
-    Ok(core::sftp_mkdir(core::SessionId::from_raw(session_id), path).await?)
-}
-
-#[uniffi::export]
-pub async fn sftp_rename(session_id: u64, from: String, to: String) -> FfiResult<()> {
-    Ok(core::sftp_rename(core::SessionId::from_raw(session_id), from, to).await?)
-}
-
-#[uniffi::export]
-pub async fn sftp_remove(session_id: u64, path: String, recursive: bool) -> FfiResult<()> {
-    Ok(core::sftp_remove(core::SessionId::from_raw(session_id), path, recursive).await?)
-}
-
-#[uniffi::export]
-pub async fn sftp_read_range(
-    session_id: u64,
-    path: String,
-    offset: u64,
-    len: u32,
-) -> FfiResult<Vec<u8>> {
-    Ok(core::sftp_read_range(core::SessionId::from_raw(session_id), path, offset, len).await?)
-}
-
-#[uniffi::export]
-pub async fn sftp_upload(session_id: u64, local: String, remote: String) -> FfiResult<u64> {
-    Ok(core::sftp_upload(core::SessionId::from_raw(session_id), local, remote).await?.raw())
-}
-
-#[uniffi::export]
-pub async fn sftp_download(session_id: u64, remote: String, local: String) -> FfiResult<u64> {
-    Ok(core::sftp_download(core::SessionId::from_raw(session_id), remote, local).await?.raw())
-}
-
-#[uniffi::export]
-pub async fn cancel_transfer(transfer_id: u64) -> FfiResult<()> {
-    Ok(core::cancel_transfer(core::TransferId::from_raw(transfer_id)).await?)
-}
-
-#[uniffi::export]
-pub async fn forward_local(
-    session_id: u64,
-    local_bind: String,
-    remote_host: String,
-    remote_port: u16,
-) -> FfiResult<u64> {
-    Ok(core::forward_local(
-        core::SessionId::from_raw(session_id),
-        local_bind,
-        remote_host,
-        remote_port,
-    )
-    .await?
-    .raw())
-}
-
-#[uniffi::export]
-pub async fn forward_remote(
-    session_id: u64,
-    remote_bind_host: String,
-    remote_bind_port: u16,
-    local_host: String,
-    local_port: u16,
-) -> FfiResult<u64> {
-    Ok(core::forward_remote(
-        core::SessionId::from_raw(session_id),
-        remote_bind_host,
-        remote_bind_port,
-        local_host,
-        local_port,
-    )
-    .await?
-    .raw())
-}
-
-#[uniffi::export]
-pub async fn forward_socks(session_id: u64, local_bind: String) -> FfiResult<u64> {
-    Ok(core::forward_socks(core::SessionId::from_raw(session_id), local_bind).await?.raw())
-}
-
-#[uniffi::export]
-pub async fn forward_bound_port(forward_id: u64) -> FfiResult<u16> {
-    Ok(core::forward_bound_port(core::ForwardId::from_raw(forward_id)).await?)
-}
-
-#[uniffi::export]
-pub async fn close_forward(forward_id: u64) -> FfiResult<()> {
-    Ok(core::close_forward(core::ForwardId::from_raw(forward_id)).await?)
-}
-
-#[uniffi::export]
-pub async fn next_events(timeout_ms: u32) -> Vec<FfiEvent> {
-    core::next_events(timeout_ms).await.into_iter().map(Into::into).collect()
-}
-```
-
-Add `thiserror.workspace = true` to `crates/ffi-uniffi/Cargo.toml` dependencies, and a dev-dependency:
-
-```toml
-[dev-dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
-```
-
-- [ ] **Step 5: Run the test to verify it passes**
-
-Run: `cargo test -p ffi-uniffi`
-Expected: PASS, 4 tests.
-
-- [ ] **Step 6: Write the iOS build script**
-
-`scripts/build-ios.sh`:
-
-```bash
-#!/usr/bin/env bash
-# Builds ssh-core for iOS device and simulator, then packages an XCFramework
-# with the generated Swift bindings.
-set -euo pipefail
-
-cd "$(dirname "$0")/.."
-OUT="crates/ffi-uniffi/out/ios"
-LIB=libtermif_ssh.a
-
-rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
-
-cargo build -p ffi-uniffi --release --target aarch64-apple-ios
-cargo build -p ffi-uniffi --release --target aarch64-apple-ios-sim
-cargo build -p ffi-uniffi --release --target x86_64-apple-ios
-
-rm -rf "$OUT"
-mkdir -p "$OUT/swift" "$OUT/sim"
-
-# Fat simulator slice: Apple silicon plus Intel.
-lipo -create \
-  "target/aarch64-apple-ios-sim/release/$LIB" \
-  "target/x86_64-apple-ios/release/$LIB" \
-  -output "$OUT/sim/$LIB"
-
-cargo run -p ffi-uniffi --bin uniffi-bindgen -- generate \
-  --library "target/aarch64-apple-ios/release/$LIB" \
-  --language swift \
-  --out-dir "$OUT/swift"
-
-# uniffi emits a modulemap that must be renamed for XCFramework packaging.
-mv "$OUT/swift/termif_sshFFI.modulemap" "$OUT/swift/module.modulemap"
-
-xcodebuild -create-xcframework \
-  -library "target/aarch64-apple-ios/release/$LIB" -headers "$OUT/swift" \
-  -library "$OUT/sim/$LIB" -headers "$OUT/swift" \
-  -output "$OUT/TermifSsh.xcframework"
-
-echo "built $OUT/TermifSsh.xcframework"
-```
-
-- [ ] **Step 7: Write the Android build script**
-
-`scripts/build-android.sh`:
-
-```bash
-#!/usr/bin/env bash
-# Builds ssh-core for Android ABIs and generates the Kotlin bindings.
-# Requires ANDROID_NDK_HOME and cargo-ndk.
-set -euo pipefail
-
-cd "$(dirname "$0")/.."
-OUT="crates/ffi-uniffi/out/android"
-
-: "${ANDROID_NDK_HOME:?set ANDROID_NDK_HOME to your NDK path}"
-command -v cargo-ndk >/dev/null || cargo install cargo-ndk
-
-rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
-
-rm -rf "$OUT"
-mkdir -p "$OUT/jniLibs" "$OUT/kotlin"
-
-cargo ndk \
-  -t arm64-v8a -t armeabi-v7a -t x86_64 \
-  -o "$OUT/jniLibs" \
-  build -p ffi-uniffi --release
-
-cargo run -p ffi-uniffi --bin uniffi-bindgen -- generate \
-  --library "$OUT/jniLibs/arm64-v8a/libtermif_ssh.so" \
-  --language kotlin \
-  --out-dir "$OUT/kotlin"
-
-echo "built $OUT/jniLibs and $OUT/kotlin"
-```
-
-- [ ] **Step 8: Make the scripts executable and verify binding generation works for one target**
-
-Run:
-
-```bash
-chmod +x scripts/build-ios.sh scripts/build-android.sh
-cargo build -p ffi-uniffi --release
-cargo run -p ffi-uniffi --bin uniffi-bindgen -- generate \
-  --library target/release/libtermif_ssh.dylib \
-  --language kotlin --out-dir /tmp/termif-kotlin-check
-ls /tmp/termif-kotlin-check
-```
-
-Expected: a `.kt` file is produced. On Linux the library is `libtermif_ssh.so`; adjust the path accordingly. Full iOS and Android packaging runs in CI (Task 13) and needs Xcode or the NDK.
-
-- [ ] **Step 9: Commit**
-
-```bash
-git add crates/ffi-uniffi scripts
-git commit -m "feat(ffi-uniffi): expose ssh-core to iOS and Android via uniffi"
-```
+## Task 12: (removed) uniffi binding for iOS and Android
+
+Deferred with the whole mobile phase — see spec §11. `crates/ffi-uniffi`,
+`scripts/build-ios.sh`, and `scripts/build-android.sh` are not built in v1.
+
+Task numbering is left alone: this plan now has 12 tasks, 1–11 and 13. The gap
+is deliberate, so the task references elsewhere in this plan and in the other
+plans keep meaning what they said.
+
+**What v1 still owes the deferred phase**, all of it enforced by earlier tasks
+rather than by this one:
+
+- Handles cross as plain `u64` (Task 2), which Swift and Kotlin both take
+  natively.
+- No callback, closure, or object crosses the FFI boundary; events are pulled
+  by `next_events` long poll (Task 3).
+- Every binding entry point wraps its call in `catch_unwind` (Task 11's
+  `guard`), a pattern a uniffi binding would repeat rather than invent.
+- `ssh-core` reads no config file, environment variable, or keychain
+  (Global Constraints).
+
+Those four are what make a second binding a translation layer instead of a
+redesign. Each is a v1 requirement for its own sake — testability, and not
+crashing the host process on a panic — so nothing here is carried purely on
+mobile's behalf.
 
 ---
 
-## Task 13: CI across all targets
+## Task 13: CI across the desktop targets
 
 **Files:**
 - Create: `.github/workflows/rust.yml`
 
 **Interfaces:**
 - Consumes: everything above.
-- Produces: a CI pipeline that fails on a broken target, which is the mitigation named in spec §10 for the four-target toolchain risk.
+- Produces: a CI pipeline that fails on a broken target, which is the mitigation named in spec §10 for the toolchain risk.
+
+There are no `ios` or `android` jobs; they arrive with the deferred mobile
+phase (spec §11). The `napi` job keeps its three-OS matrix — Linux is not a
+shipping target, but it is where the integration tests run, and it catches a
+`cfg`-guarded mistake for the price of one cached job.
 
 - [ ] **Step 1: Write the workflow**
 
@@ -4184,36 +3671,6 @@ jobs:
           npm run build:debug
           npm test
 
-  ios:
-    name: uniffi ios
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.78
-      - uses: Swatinem/rust-cache@v2
-      - run: ./scripts/build-ios.sh
-      - name: Check the XCFramework exists
-        run: test -d crates/ffi-uniffi/out/ios/TermifSsh.xcframework
-
-  android:
-    name: uniffi android
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.78
-      - uses: nttld/setup-ndk@v1
-        id: ndk
-        with:
-          ndk-version: r26d
-      - uses: Swatinem/rust-cache@v2
-      - run: ./scripts/build-android.sh
-        env:
-          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
-      - name: Check the libraries exist
-        run: |
-          test -f crates/ffi-uniffi/out/android/jniLibs/arm64-v8a/libtermif_ssh.so
-          test -f crates/ffi-uniffi/out/android/jniLibs/armeabi-v7a/libtermif_ssh.so
-          test -f crates/ffi-uniffi/out/android/jniLibs/x86_64/libtermif_ssh.so
 ```
 
 - [ ] **Step 2: Verify locally what can be verified locally**
@@ -4233,7 +3690,7 @@ Expected: all pass. Fix any clippy warnings before committing, since CI treats t
 
 ```bash
 git add .github/workflows/rust.yml
-git commit -m "ci: build and test ssh-core on all four platform targets"
+git commit -m "ci: build and test ssh-core on the desktop targets"
 ```
 
 ---
@@ -4245,25 +3702,28 @@ git commit -m "ci: build and test ssh-core on all four platform targets"
 | Spec item | Task |
 |---|---|
 | §3 Rust/TS split, no config in Rust | Global Constraints, Task 6 (`init` takes the only path) |
-| §3 three build targets | Tasks 11, 12, 13 |
-| §5 handle-based, no JS callbacks | Task 2 (`Registry`), Tasks 11 and 12 (no callback params) |
+| §3 build targets (v1: napi only) | Tasks 11, 13; uniffi deferred, Task 12 stub |
+| §5 handle-based, no JS callbacks | Task 2 (`Registry`), Task 11 (no callback params) |
 | §5 connect/disconnect | Task 6 |
 | §5 trust_host_key, unknown vs mismatch | Tasks 4, 6 |
 | §5 open_shell/write/resize/close_channel | Task 7 |
 | §5 SFTP list/stat/mkdir/rename/remove | Task 8 |
-| §5 `sftp_read_range` with a size cap | Task 8 (`SFTP_READ_RANGE_MAX` = 1 MiB, closing the spec's open question) |
+| §5 `sftp_read_range` with a size cap | Task 8 (`SFTP_READ_RANGE_MAX` = 1 MiB, matching spec §5) |
 | §5 upload/download by path, progress, cancel | Task 9 |
 | §5 forward local/remote/dynamic | Task 10 |
 | §5 `next_events` long poll, one runtime | Tasks 3, 6 |
 | §5 known_hosts local, never synced | Task 4 (comment states the reason), no sync code exists here |
-| §5 iOS forwarding limits | Task 10 note; UI treatment deferred to Plan 4 Task 9 |
+| §5 forwarding platform table | Task 10 note; no v1 platform is restricted, and the mobile treatment is deferred with §11 |
 | §7 host key mismatch hard block | Task 6 — `check_server_key` returns `Err`, and no "continue once" path exists |
-| §7 no panic across FFI | Tasks 11, 12 (`guard`) |
+| §7 no panic across FFI | Task 11 (`guard`) |
 | §8 Docker sshd integration tests | Tasks 5–10 |
-| §10 four-target risk mitigated in CI | Task 13 |
+| §10 toolchain risk mitigated in CI | Task 13 (macOS, Windows, Linux) |
+| §11 v1 must not foreclose a second binding | Task 12 stub lists the four constraints and where each is enforced |
 
 **Placeholders:** none. Every code step carries real code. The three stub modules in Task 6 are named, one-line, and each says which task replaces it.
 
-**Type consistency:** `SessionId`/`ChannelId`/`TransferId`/`ForwardId` are used identically in Tasks 2, 6–10 and cross FFI as `BigInt` (napi) and `u64` (uniffi). `SshError::code()` strings in Task 1 match every test assertion in Tasks 4, 6–10, 12 and the napi message prefix in Task 11. `DirEntry` fields in Task 2 match `JsDirEntry` (Task 11) and `FfiDirEntry` (Task 12). `Event` variants in Task 3 match `JsEvent.kind` values and `FfiEvent` variants.
+**Type consistency:** `SessionId`/`ChannelId`/`TransferId`/`ForwardId` are used identically in Tasks 2 and 6–10, and cross FFI as `BigInt` in Task 11. `SshError::code()` strings in Task 1 match every test assertion in Tasks 4 and 6–10, and the napi message prefix in Task 11. `DirEntry` fields in Task 2 match `JsDirEntry` in Task 11. `Event` variants in Task 3 match the `JsEvent.kind` values in Task 11.
 
-**Deviation from the spec, recorded deliberately:** the spec's §5 signature list shows `trust_host_key(host, fingerprint)`. This plan uses `trust_host_key(host, port, algo, fingerprint)`, because a host on a non-default port is a distinct known_hosts entry and the algorithm is part of the entry. Task 4's tests cover both. The spec's signature would have made two different servers on one host indistinguishable.
+**Scope-cut check.** Nothing outside Task 12 and Task 13's workflow depended on the uniffi binding: `ssh-core` never imported it, and the removed CI jobs only built it. Tasks 1–11 are unchanged apart from the workspace members list, the `.gitignore`, and three comments that had described a mobile rationale.
+
+**Spec alignment:** `trust_host_key(host, port, algo, fingerprint)` matches spec §5. Port and algorithm are part of the known_hosts entry so two servers on one host, or two algorithms on one server, stay distinct. Task 4's tests cover both.

@@ -2,7 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship a usable macOS and Windows app: unlock the vault, browse and edit hosts, open multiple SSH terminal tabs, run snippets, browse and transfer files over SFTP, and manage port forwards — all against `@termif/core`.
+**Scope note (2026-08-28):** this plan is the whole of v1's UI. The mobile shells are deferred (spec §11), so there is no sibling plan to keep in step with — where the plan below notes that a seam exists for a second shell, that is a note about why a boundary is drawn, not work owed here.
+
+**Goal:** Ship a usable macOS and Windows app: unlock the vault, sign in to Google and attach the Termif spreadsheet, browse and edit hosts, open multiple SSH terminal tabs, run snippets, browse and transfer files over SFTP, and manage port forwards — all against `@termif/core`.
 
 **Architecture:** Electron with three layers. The **main** process owns the `.node` FFI module, the SQLite file, the OS keychain, and the network; it exposes them over IPC. The **preload** script bridges IPC into the renderer through `contextBridge` with no Node exposed. The **renderer** is React, builds a `Platform` object whose methods are IPC calls, and hands it to `@termif/core`. Terminal rendering is `xterm.js` with the WebGL addon.
 
@@ -50,6 +52,7 @@
 | `apps/desktop/src/renderer/views/SftpBrowser.tsx` | Two-pane file browser |
 | `apps/desktop/src/renderer/views/ForwardPanel.tsx` | Forward list and form |
 | `apps/desktop/src/renderer/views/SyncBadge.tsx` | Sync status |
+| `apps/desktop/src/renderer/views/SignInScreen.tsx` | Google device-flow UI and first-run spreadsheet attach |
 
 Layer boundary rationale: `shared/ipc.ts` is the only module both main and preload import, so the contract has exactly one definition. Each view owns one screen concern and reads from a store, keeping files small enough to hold in context.
 
@@ -265,6 +268,7 @@ export const CHANNELS = Object.freeze({
   authStartDeviceFlow: 'termif:auth:startDeviceFlow',
   authPollDeviceFlow: 'termif:auth:pollDeviceFlow',
   authAccessToken: 'termif:auth:accessToken',
+  authHasSession: 'termif:auth:hasSession',
   authSignOut: 'termif:auth:signOut',
 
   appPickFile: 'termif:app:pickFile',
@@ -366,6 +370,7 @@ export interface TermifApi {
     startDeviceFlow(): Promise<DeviceFlowStart>
     pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll>
     accessToken(): Promise<string>
+    hasSession(): Promise<boolean>
     signOut(): Promise<void>
   }
   app: {
@@ -517,6 +522,7 @@ const api: TermifApi = {
     startDeviceFlow: () => ipcRenderer.invoke(CHANNELS.authStartDeviceFlow),
     pollDeviceFlow: (deviceCode) => ipcRenderer.invoke(CHANNELS.authPollDeviceFlow, deviceCode),
     accessToken: () => ipcRenderer.invoke(CHANNELS.authAccessToken),
+    hasSession: () => ipcRenderer.invoke(CHANNELS.authHasSession),
     signOut: () => ipcRenderer.invoke(CHANNELS.authSignOut),
   },
   app: {
@@ -1043,7 +1049,7 @@ git commit -m "feat(desktop): add main-process native bridge and SQLite database
 **Interfaces:**
 - Produces from `secureStore.ts`: `createSecureStore(filePath)` with `get`, `set`, `delete`. Values are encrypted with Electron `safeStorage` and stored in a small JSON file; `safeStorage` uses the login keychain on macOS and DPAPI on Windows.
 - Produces from `net.ts`: `request(payload): Promise<HttpResponsePayload>` over Electron's `net.fetch`.
-- Produces from `googleAuth.ts`: `GoogleAuth` class with `startDeviceFlow()`, `pollDeviceFlow(deviceCode)`, `accessToken()`, `signOut()`; `SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file']`.
+- Produces from `googleAuth.ts`: `GoogleAuth` class with `startDeviceFlow()`, `pollDeviceFlow(deviceCode)`, `accessToken()`, `hasSession()`, `signOut()`; `SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file']`.
 - Produces from `handlers.ts`: `registerHandlers(deps)`, which wires every channel in `CHANNELS` exactly once.
 
 `drive.file` rather than full `drive`: it lets the app create and use its own spreadsheet while being unable to read anything else in the user's Drive (spec §4).
@@ -1097,6 +1103,17 @@ describe('GoogleAuth', () => {
     ])
     // Full Drive access would let the app read unrelated files; it must not ask.
     expect(SCOPES).not.toContain('https://www.googleapis.com/auth/drive')
+  })
+
+  it('has no session before the user authorises', async () => {
+    const auth = new GoogleAuth({
+      clientId: 'c',
+      clientSecret: 's',
+      store: fakeStore(),
+      request: vi.fn(),
+      now: () => 0,
+    })
+    expect(await auth.hasSession()).toBe(false)
   })
 
   it('starts a device flow and returns the user code and URL', async () => {
@@ -1160,6 +1177,7 @@ describe('GoogleAuth', () => {
     })
 
     expect(await auth.pollDeviceFlow('dev-1')).toEqual({ state: 'authorized' })
+    expect(await auth.hasSession()).toBe(true)
 
     const raw = store.items.get('termif.googleToken')
     expect(raw).toBeDefined()
@@ -1320,7 +1338,9 @@ export interface MainSecureStore {
  * useless without the logged-in user's session.
  *
  * Desktop has no biometric gate of its own, so `requireBiometrics` is accepted
- * and ignored here; it is honoured on mobile (Plan 4).
+ * and ignored here. Core's `SecureStore` interface carries the flag because a
+ * mobile shell would honour it (spec §11); accepting and ignoring it keeps one
+ * interface rather than two.
  */
 export function createSecureStore(filePath: string): MainSecureStore {
   const readAll = (): Record<string, string> => {
@@ -1541,6 +1561,10 @@ export class GoogleAuth {
     return refreshed.accessToken
   }
 
+  async hasSession(): Promise<boolean> {
+    return (await this.#load()) !== null
+  }
+
   async signOut(): Promise<void> {
     await this.#deps.store.delete(TOKEN_KEY)
   }
@@ -1585,7 +1609,7 @@ function parse<T>(response: HttpResponsePayload): T {
 - [ ] **Step 4: Run the auth test**
 
 Run: `cd apps/desktop && npx vitest run test/main/googleAuth.test.ts`
-Expected: PASS, 12 tests.
+Expected: PASS, 13 tests.
 
 - [ ] **Step 5: Write the failing handler-coverage test**
 
@@ -1685,6 +1709,7 @@ export function handlerNames(): string[] {
     CHANNELS.authStartDeviceFlow,
     CHANNELS.authPollDeviceFlow,
     CHANNELS.authAccessToken,
+    CHANNELS.authHasSession,
     CHANNELS.authSignOut,
     CHANNELS.appPickFile,
     CHANNELS.appPickSaveLocation,
@@ -1834,6 +1859,7 @@ export function registerHandlers(deps: HandlerDeps): void {
     deps.auth.pollDeviceFlow(deviceCode),
   )
   ipcMain.handle(CHANNELS.authAccessToken, async () => deps.auth.accessToken())
+  ipcMain.handle(CHANNELS.authHasSession, async () => deps.auth.hasSession())
   ipcMain.handle(CHANNELS.authSignOut, async () => {
     await deps.auth.signOut()
   })
@@ -1928,7 +1954,7 @@ git commit -m "feat(desktop): add secure store, HTTP client, Google device-flow 
 - Produces `createPlatform(api: TermifApi): Platform & { platformKind: Promise<'desktop'> }`, converting `bigint` ⇄ string at the boundary and reassembling `SshEvent` from `SerialisedSshEvent`.
 - Produces `deserialiseEvent(e: SerialisedSshEvent): SshEvent` and `deserialiseDirEntry`.
 
-This module is the entire seam between the shell and core: the same file exists in Plan 4 with React Native's bridge behind it, and core cannot tell the difference.
+This module is the entire seam between the shell and core. Everything Electron-shaped stops here, which is what makes core testable against a fake and, later, drivable by a second shell (spec §11). In v1 the practical payoff is the first half: core's tests need no Electron.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2000,6 +2026,7 @@ function stubApi(overrides: Partial<{ [K in keyof TermifApi]: Partial<TermifApi[
       startDeviceFlow: record('startDeviceFlow'),
       pollDeviceFlow: record('pollDeviceFlow'),
       accessToken: record('accessToken', 'token'),
+      hasSession: record('hasSession', false),
       signOut: record('signOut'),
       ...overrides.auth,
     },
@@ -2193,8 +2220,7 @@ export function deserialiseEvent(event: SerialisedSshEvent): SshEvent {
 
 /**
  * Builds the `Platform` that `@termif/core` consumes. Everything the shell
- * knows about Electron stops here: core sees only this interface, which is what
- * lets the same core drive the React Native shell (spec §6).
+ * knows about Electron stops here: core sees only this interface (spec §6).
  */
 export function createPlatform(api: TermifApi): Platform {
   /**
@@ -2379,7 +2405,7 @@ import { fakePlatform } from './fakes/platform.js'
 const TEST_PARAMS = { m: 16384, t: 1, p: 1 } as const
 
 async function setup() {
-  const platform = fakePlatform()
+  const platform = await fakePlatform()
   const store = await Store.open(platform)
   const vaultStore = createVaultStore({ platform, store, kdfParams: TEST_PARAMS })
   return { platform, store, vaultStore }
@@ -2518,11 +2544,9 @@ import type { Platform, SqlValue } from '@termif/core'
  * an SSH bridge that does nothing. Component tests should exercise the same
  * core code paths the app does, not a mock of them.
  */
-export function fakePlatform(): Platform {
+export async function fakePlatform(): Promise<Platform> {
   const items = new Map<string, Uint8Array>()
 
-  // sql.js is synchronous once initialised; the top-level await keeps the
-  // helper's signature simple for callers.
   const SQL = await initSqlJs()
   const db = new SQL.Database()
 
@@ -2605,8 +2629,6 @@ export function fakePlatform(): Platform {
   }
 }
 ```
-
-Note: the top-level `await initSqlJs()` inside a non-async function is invalid. Make `fakePlatform` async — `export async function fakePlatform(): Promise<Platform>` — and update the two call sites in the tests to `await fakePlatform()`.
 
 - [ ] **Step 3: Run to see the store test fail**
 
@@ -3069,7 +3091,7 @@ export async function bootApp(platform: Platform, api: TermifApi): Promise<App> 
 
   // Transfer and forward events arrive on the same queue the sessions manager
   // drains, so they are forwarded here rather than opened as a second loop.
-  sessions.onBridgeEvent?.((event) => {
+  sessions.onBridgeEvent((event) => {
     transfers.handleEvent(event)
     forwards.handleEvent(event)
   })
@@ -3100,8 +3122,6 @@ export async function bootApp(platform: Platform, api: TermifApi): Promise<App> 
   return app
 }
 ```
-
-Note on `sessions.onBridgeEvent`: Plan 2's `SessionManager` exposes `onLog`, `onTabClosed`, and `onSessionState`, but not a raw event tap — its drain loop consumes transfer and forward events and ignores them. Add `onBridgeEvent(listener: (event: SshEvent) => void): () => void` to `SessionManager` in Plan 2 Task 9, emitting every drained event before its own `#handle`, and drop the optional-call `?.` here. One loop with a tap is right; a second `nextEvents` loop would race the first for the same events.
 
 `apps/desktop/src/renderer/app/AppRoot.tsx`:
 
@@ -6601,7 +6621,7 @@ export function SftpBrowserView({
   )
 }
 
-/** Wired half. Needs a live session, so it says so when there is none. */
+/** Wired half. Outer gate never calls `useStore`; inner always does. */
 export function SftpBrowser({ app }: { app: App }) {
   const [sessionId, setSessionId] = useState<bigint | null>(null)
   const [transfers, setTransfers] = useState<TransferView[]>([])
@@ -6619,22 +6639,35 @@ export function SftpBrowser({ app }: { app: App }) {
     return app.transfers.onChange(() => setTransfers(app.transfers.list()))
   }, [app.transfers])
 
-  const [store, setStore] = useState<ReturnType<typeof createSftpStore> | null>(null)
-  useEffect(() => {
-    if (sessionId === null) {
-      setStore(null)
-      return
-    }
-    const created = createSftpStore({ ssh: app.platform.ssh, sessionId })
-    setStore(created)
-    void created.open('.')
-  }, [app.platform.ssh, sessionId])
-
-  const state = store === null ? null : useStore(store)
-
-  if (sessionId === null || store === null || state === null) {
+  if (sessionId === null) {
     return <p>Connect to a host to browse its files.</p>
   }
+
+  return (
+    <SftpBrowserSession
+      key={sessionId.toString()}
+      app={app}
+      sessionId={sessionId}
+      transfers={transfers}
+    />
+  )
+}
+
+function SftpBrowserSession({
+  app,
+  sessionId,
+  transfers,
+}: {
+  app: App
+  sessionId: bigint
+  transfers: readonly TransferView[]
+}) {
+  const [store] = useState(() => {
+    const created = createSftpStore({ ssh: app.platform.ssh, sessionId })
+    void created.open('.')
+    return created
+  })
+  const state = useStore(store)
 
   return (
     <>
@@ -6665,8 +6698,6 @@ export function SftpBrowser({ app }: { app: App }) {
   )
 }
 ```
-
-Note: `const state = store === null ? null : useStore(store)` calls a hook conditionally, which React forbids. Restructure `SftpBrowser` so the wired component always calls `useStore` — split it into an outer component that decides whether a session exists and an inner one, keyed on `sessionId`, that creates the store and calls the hook unconditionally. Do this when implementing; the tests target `SftpBrowserView`, so they are unaffected.
 
 - [ ] **Step 5: Run the SFTP tests**
 
@@ -6741,7 +6772,8 @@ describe('ForwardPanelView', () => {
   })
 
   it('shows the platform note when core supplies one', () => {
-    // On iOS this is how the user learns the forward is foreground-only; the
+    // No v1 platform sets a note, but ForwardView carries the field (spec §5)
+    // and the panel must render it rather than silently dropping it. The
     // desktop panel renders whatever note core attached.
     render(
       <ForwardPanelView {...props} forwards={[forward({ note: t('forward.iosForegroundOnly') })]} />,
@@ -7265,6 +7297,477 @@ git commit -m "feat(desktop): add forward panel, packaging config, and end-to-en
 
 ---
 
+## Task 12: Google sign-in screen and first-run spreadsheet
+
+**Files:**
+- Create: `apps/desktop/src/renderer/state/signIn.ts`, `apps/desktop/src/renderer/views/SignInScreen.tsx`
+- Modify: `apps/desktop/src/renderer/app/MainLayout.tsx`
+- Test: `apps/desktop/test/renderer/signIn.test.ts`, `apps/desktop/test/renderer/SignInScreen.test.tsx`
+
+**Interfaces:**
+- Consumes: Plan 3 Task 3 `TermifApi.auth` (`startDeviceFlow`, `pollDeviceFlow`, `hasSession`, `signOut`, `accessToken`), Plan 2 `SheetClient.findSpreadsheetByTitle` / `createSpreadsheet`, `bootApp.setSpreadsheet`.
+- Produces `runDeviceFlow(auth, opts)` — poll loop with injected `sleep`; never a second Google client.
+- Produces `connectSheet(setSpreadsheet, sheets)` — find existing Termif spreadsheet, create only if none (spec §4).
+- Produces `SignInScreen`. Until the user finishes, the app stays offline against the local database.
+
+- [ ] **Step 1: Write the failing flow tests**
+
+`apps/desktop/test/renderer/signIn.test.ts`:
+
+```typescript
+import { describe, expect, it, vi } from 'vitest'
+import {
+  connectSheet,
+  runDeviceFlow,
+  type DeviceFlowAuth,
+} from '../../src/renderer/state/signIn.js'
+import type { DeviceFlowPoll, DeviceFlowStart } from '../../src/shared/ipc.js'
+
+function start(overrides: Partial<DeviceFlowStart> = {}): DeviceFlowStart {
+  return {
+    userCode: 'ABCD-EFGH',
+    verificationUrl: 'https://google.com/device',
+    deviceCode: 'dev-1',
+    intervalSecs: 0,
+    expiresInSecs: 1800,
+    ...overrides,
+  }
+}
+
+function auth(overrides: Partial<DeviceFlowAuth>): DeviceFlowAuth {
+  return {
+    hasSession: async () => false,
+    startDeviceFlow: async () => start(),
+    pollDeviceFlow: async () => ({ state: 'pending' }),
+    ...overrides,
+  }
+}
+
+describe('runDeviceFlow', () => {
+  it('skips the device flow when a refresh token already exists', async () => {
+    const startDeviceFlow = vi.fn()
+    const result = await runDeviceFlow(auth({ hasSession: async () => true, startDeviceFlow }), {
+      onPhase: vi.fn(),
+      openExternal: vi.fn(),
+      sleep: vi.fn(),
+      signal: { cancelled: false },
+    })
+    expect(result).toBe('authorized')
+    expect(startDeviceFlow).not.toHaveBeenCalled()
+  })
+
+  it('opens the verification URL and returns authorized after a pending poll', async () => {
+    const polls: DeviceFlowPoll[] = [{ state: 'pending' }, { state: 'authorized' }]
+    const openExternal = vi.fn()
+    const phases: string[] = []
+
+    const result = await runDeviceFlow(
+      auth({
+        pollDeviceFlow: async () => polls.shift() ?? { state: 'authorized' },
+      }),
+      {
+        onPhase: (phase) => phases.push(phase.kind),
+        openExternal,
+        sleep: async () => {},
+        signal: { cancelled: false },
+      },
+    )
+
+    expect(result).toBe('authorized')
+    expect(openExternal).toHaveBeenCalledWith('https://google.com/device')
+    expect(phases).toEqual(['code', 'authorized'])
+  })
+
+  it('surfaces denial with the reason', async () => {
+    const result = await runDeviceFlow(
+      auth({
+        pollDeviceFlow: async () => ({ state: 'denied', reason: 'access_denied' }),
+      }),
+      {
+        onPhase: vi.fn(),
+        openExternal: vi.fn(),
+        sleep: async () => {},
+        signal: { cancelled: false },
+      },
+    )
+    expect(result).toBe('denied')
+  })
+
+  it('surfaces expiry so the user can restart', async () => {
+    const result = await runDeviceFlow(
+      auth({ pollDeviceFlow: async () => ({ state: 'expired' }) }),
+      {
+        onPhase: vi.fn(),
+        openExternal: vi.fn(),
+        sleep: async () => {},
+        signal: { cancelled: false },
+      },
+    )
+    expect(result).toBe('expired')
+  })
+
+  it('stops polling when cancelled during the wait', async () => {
+    const signal = { cancelled: false }
+    const pollDeviceFlow = vi.fn()
+    const pending = runDeviceFlow(auth({ pollDeviceFlow }), {
+      onPhase: vi.fn(),
+      openExternal: vi.fn(),
+      sleep: async () => {
+        signal.cancelled = true
+      },
+      signal,
+    })
+    expect(await pending).toBe('cancelled')
+    expect(pollDeviceFlow).not.toHaveBeenCalled()
+  })
+})
+
+describe('connectSheet', () => {
+  it('reuses an existing Termif spreadsheet rather than creating a second vault', async () => {
+    const setSpreadsheet = vi.fn()
+    const create = vi.fn()
+    const id = await connectSheet(setSpreadsheet, {
+      findSpreadsheetByTitle: async () => 'existing-sheet',
+      createSpreadsheet: create,
+    })
+    expect(id).toBe('existing-sheet')
+    expect(setSpreadsheet).toHaveBeenCalledWith('existing-sheet')
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it('creates the spreadsheet only when none exists', async () => {
+    const setSpreadsheet = vi.fn()
+    const id = await connectSheet(setSpreadsheet, {
+      findSpreadsheetByTitle: async () => null,
+      createSpreadsheet: async () => 'new-sheet',
+    })
+    expect(id).toBe('new-sheet')
+    expect(setSpreadsheet).toHaveBeenCalledWith('new-sheet')
+  })
+})
+```
+
+- [ ] **Step 2: Run to see the flow tests fail**
+
+Run: `cd apps/desktop && npx vitest run test/renderer/signIn.test.ts`
+Expected: FAIL — no `src/renderer/state/signIn.ts`.
+
+- [ ] **Step 3: Write the flow**
+
+`apps/desktop/src/renderer/state/signIn.ts`:
+
+```typescript
+import type { DeviceFlowPoll, DeviceFlowStart } from '../../shared/ipc.js'
+
+export type DeviceFlowPhase =
+  | { kind: 'idle' }
+  | { kind: 'code'; userCode: string; verificationUrl: string }
+  | { kind: 'authorized' }
+  | { kind: 'denied'; reason: string }
+  | { kind: 'expired' }
+
+export interface DeviceFlowAuth {
+  hasSession(): Promise<boolean>
+  startDeviceFlow(): Promise<DeviceFlowStart>
+  pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll>
+}
+
+export interface DeviceFlowOpts {
+  onPhase(phase: DeviceFlowPhase): void
+  openExternal(url: string): Promise<void>
+  sleep(ms: number): Promise<void>
+  signal: { cancelled: boolean }
+}
+
+export interface SheetLookup {
+  findSpreadsheetByTitle(title: string): Promise<string | null>
+  createSpreadsheet(title: string): Promise<string>
+}
+
+export async function runDeviceFlow(
+  auth: DeviceFlowAuth,
+  opts: DeviceFlowOpts,
+): Promise<'authorized' | 'denied' | 'expired' | 'cancelled'> {
+  if (await auth.hasSession()) {
+    opts.onPhase({ kind: 'authorized' })
+    return 'authorized'
+  }
+
+  const started = await auth.startDeviceFlow()
+  opts.onPhase({
+    kind: 'code',
+    userCode: started.userCode,
+    verificationUrl: started.verificationUrl,
+  })
+  await opts.openExternal(started.verificationUrl)
+
+  while (!opts.signal.cancelled) {
+    await opts.sleep(started.intervalSecs * 1000)
+    if (opts.signal.cancelled) return 'cancelled'
+
+    const poll = await auth.pollDeviceFlow(started.deviceCode)
+    if (poll.state === 'pending') continue
+    if (poll.state === 'authorized') {
+      opts.onPhase({ kind: 'authorized' })
+      return 'authorized'
+    }
+    if (poll.state === 'denied') {
+      opts.onPhase({ kind: 'denied', reason: poll.reason })
+      return 'denied'
+    }
+    opts.onPhase({ kind: 'expired' })
+    return 'expired'
+  }
+
+  return 'cancelled'
+}
+
+/**
+ * Second desktop must attach the first desktop's sheet (spec §4). Creating
+ * unconditionally would fork the ciphertext into two vaults.
+ */
+export async function connectSheet(
+  setSpreadsheet: (id: string) => void,
+  sheets: SheetLookup,
+): Promise<string> {
+  const existing = await sheets.findSpreadsheetByTitle('Termif')
+  const id = existing ?? (await sheets.createSpreadsheet('Termif'))
+  setSpreadsheet(id)
+  return id
+}
+
+export const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+```
+
+- [ ] **Step 4: Run the flow tests to verify they pass**
+
+Run: `cd apps/desktop && npx vitest run test/renderer/signIn.test.ts`
+Expected: PASS, 7 tests.
+
+- [ ] **Step 5: Write the failing screen test**
+
+`apps/desktop/test/renderer/SignInScreen.test.tsx`:
+
+```tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import { SignInScreenView } from '../../src/renderer/views/SignInScreen.js'
+
+describe('SignInScreenView', () => {
+  it('shows the user code and does not offer an override', () => {
+    render(
+      <SignInScreenView
+        phase={{ kind: 'code', userCode: 'ABCD-EFGH', verificationUrl: 'https://google.com/device' }}
+        busy={false}
+        onStart={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+    expect(screen.getByText(/ABCD-EFGH/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /continue anyway/i })).toBeNull()
+  })
+
+  it('starts the flow from the idle state', async () => {
+    const onStart = vi.fn()
+    render(
+      <SignInScreenView phase={{ kind: 'idle' }} busy={false} onStart={onStart} onCancel={() => {}} />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /sign in with google/i }))
+    expect(onStart).toHaveBeenCalledOnce()
+  })
+
+  it('states a denial without closing the form', () => {
+    render(
+      <SignInScreenView
+        phase={{ kind: 'denied', reason: 'access_denied' }}
+        busy={false}
+        onStart={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+    expect(screen.getByRole('alert').textContent).toMatch(/access_denied/)
+    expect(screen.getByRole('button', { name: /sign in with google/i })).toBeTruthy()
+  })
+})
+```
+
+- [ ] **Step 6: Run to see the screen test fail**
+
+Run: `cd apps/desktop && npx vitest run test/renderer/SignInScreen.test.tsx`
+Expected: FAIL — no `src/renderer/views/SignInScreen.tsx`.
+
+- [ ] **Step 7: Write the screen and wire it into the layout**
+
+`apps/desktop/src/renderer/views/SignInScreen.tsx`:
+
+```tsx
+import { useEffect, useRef, useState } from 'react'
+import { SheetClient, t } from '@termif/core'
+import type { App } from '../state/boot.js'
+import {
+  connectSheet,
+  defaultSleep,
+  runDeviceFlow,
+  type DeviceFlowPhase,
+} from '../state/signIn.js'
+
+export interface SignInScreenViewProps {
+  phase: DeviceFlowPhase
+  busy: boolean
+  onStart(): void
+  onCancel(): void
+}
+
+export function SignInScreenView({ phase, busy, onStart, onCancel }: SignInScreenViewProps) {
+  const error =
+    phase.kind === 'denied'
+      ? t('sync.signIn.denied', { reason: phase.reason })
+      : phase.kind === 'expired'
+        ? t('sync.signIn.expired')
+        : null
+
+  return (
+    <section className="sign-in">
+      <h2>{t('sync.signIn')}</h2>
+      <p>{t('sync.signIn.body')}</p>
+
+      {phase.kind === 'code' && (
+        <>
+          <p>
+            {t('sync.signIn.code', { code: phase.userCode })}
+          </p>
+          <p>{t('sync.signIn.open')}</p>
+          {busy && <p role="status">{t('sync.signIn.waiting')}</p>}
+        </>
+      )}
+
+      {error !== null && <p role="alert">{error}</p>}
+
+      <div className="sign-in__actions">
+        {(phase.kind === 'idle' || phase.kind === 'denied' || phase.kind === 'expired') && (
+          <button type="button" disabled={busy} onClick={onStart}>
+            {t('sync.signIn.start')}
+          </button>
+        )}
+        <button type="button" onClick={onCancel}>
+          {t('sync.signIn.cancel')}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+export function SignInScreen({ app, onDone, onCancel }: { app: App; onDone(): void; onCancel(): void }) {
+  const [phase, setPhase] = useState<DeviceFlowPhase>({ kind: 'idle' })
+  const [busy, setBusy] = useState(false)
+  const signal = useRef({ cancelled: false })
+
+  useEffect(() => {
+    const live = signal.current
+    return () => {
+      live.cancelled = true
+    }
+  }, [])
+
+  const start = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      const result = await runDeviceFlow(window.termif.auth, {
+        onPhase: setPhase,
+        openExternal: (url) => window.termif.app.openExternal(url),
+        sleep: defaultSleep,
+        signal: signal.current,
+      })
+      if (result !== 'authorized') return
+
+      const client = new SheetClient(app.platform.net, () => window.termif.auth.accessToken())
+      await connectSheet((id) => app.setSpreadsheet(id), client)
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <SignInScreenView
+      phase={phase}
+      busy={busy}
+      onStart={() => void start()}
+      onCancel={onCancel}
+    />
+  )
+}
+```
+
+Modify `apps/desktop/src/renderer/app/MainLayout.tsx`: add the sign-in overlay. Imports become:
+
+```tsx
+import { useEffect, useState } from 'react'
+import { t } from '@termif/core'
+import { useStore } from '../state/useStore.js'
+import { createHostStore } from '../state/hostStore.js'
+import type { App } from '../state/boot.js'
+import { HostList } from '../views/HostList.js'
+import { HostForm } from '../views/HostForm.js'
+import { SyncBadge } from '../views/SyncBadge.js'
+import { SignInScreen } from '../views/SignInScreen.js'
+import { TerminalTabs } from '../views/TerminalTabs.js'
+import { SftpBrowser } from '../views/SftpBrowser.js'
+import { ForwardPanel } from '../views/ForwardPanel.js'
+import { useConnectFlow } from '../state/connectFlow.js'
+import type { SyncStatus } from '@termif/core'
+```
+
+Inside `MainLayout`, after the `syncStatus` state:
+
+```tsx
+  const [signingIn, setSigningIn] = useState(false)
+  const [hasSync, setHasSync] = useState(app.sync !== null)
+
+  useEffect(() => app.sync?.onStatus(setSyncStatus), [app.sync, hasSync])
+```
+
+Replace the existing `useEffect(() => app.sync?.onStatus(setSyncStatus), [app.sync])` with that `hasSync` version (do not leave two status subscriptions).
+
+Replace the `SyncBadge` in the sidebar with:
+
+```tsx
+        {hasSync ? (
+          <SyncBadge status={syncStatus} onSyncNow={() => void app.sync?.syncNow()} />
+        ) : (
+          <button type="button" onClick={() => setSigningIn(true)}>
+            {t('sync.signIn')}
+          </button>
+        )}
+        {signingIn && (
+          <SignInScreen
+            app={app}
+            onDone={() => {
+              setSigningIn(false)
+              setHasSync(true)
+              setSyncStatus(app.sync?.status ?? syncStatus)
+            }}
+            onCancel={() => setSigningIn(false)}
+          />
+        )}
+```
+
+- [ ] **Step 8: Run the screen and flow tests**
+
+Run: `cd apps/desktop && npx vitest run test/renderer/signIn.test.ts test/renderer/SignInScreen.test.tsx`
+Expected: PASS, 10 tests.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add apps/desktop
+git commit -m "feat(desktop): add Google device-flow sign-in and first-run spreadsheet attach"
+```
+
+---
+
 ## Plan 3 Self-Review
 
 **Spec coverage:**
@@ -7274,6 +7777,7 @@ git commit -m "feat(desktop): add forward panel, packaging config, and end-to-en
 | §3 `.node` loaded in main only, renderer over IPC | Tasks 1, 2, 3 |
 | §3 Rust never sees the vault or config | Task 3 (credentials pass as connect parameters only) |
 | §4 `drive.file` scope, refresh token in the keystore | Task 3 |
+| §4 device-flow screen, find-or-create spreadsheet | Task 12 |
 | §4 vault key stays in the renderer, in memory | Task 5 |
 | §4 "remember this device" | Task 5 |
 | §4 local DB is the read source | Tasks 2, 6 |
@@ -7285,7 +7789,7 @@ git commit -m "feat(desktop): add forward panel, packaging config, and end-to-en
 | §6 xterm.js with WebGL, no ANSI parsing in app code | Task 8 |
 | §6 multi-tab, scrollback kept across reconnect | Task 8 (panes stay mounted) |
 | §6 reconnect message, not a pretence of continuity | Task 8 (`session.reconnecting` banner) |
-| §6 i18n through `t()` | Tasks 5–11 |
+| §6 i18n through `t()` | Tasks 5–12 |
 | §7 host key mismatch hard block, no override | Task 7 (a test asserts only one button exists) |
 | §7 user-correctable errors keep the form open | Tasks 6, 7 |
 | §7 sync failure leaves the app usable | Task 6 (`SyncBadge` reports; nothing blocks) |
@@ -7294,12 +7798,6 @@ git commit -m "feat(desktop): add forward panel, packaging config, and end-to-en
 
 **Placeholders:** none. Every step carries runnable code or an exact command. Four places name a stub to write and the task that replaces it (`MainLayout` in Task 5; `TerminalTabs`/`SftpBrowser`/`ForwardPanel`/`useConnectFlow` in Task 6; `SnippetPalette` in Task 8) — each is a one-line component with its replacing task named, not deferred design.
 
-**Three corrections to make while implementing** (each already flagged inline at its site):
+**Corrections that used to be footnotes, now inlined:** `fakePlatform` is `async`; `SessionManager.onBridgeEvent` is produced by Plan 2 Task 9 and called without `?.` from `bootApp`; `SftpBrowser` splits into an outer gate and an inner `SftpBrowserSession` that always calls `useStore`.
 
-1. `fakePlatform` in Task 5 uses a top-level `await` inside a non-async function. Make it `async` and `await` it at both call sites.
-2. `bootApp` in Task 5 calls `sessions.onBridgeEvent`, which Plan 2 does not define. Add `onBridgeEvent(listener: (event: SshEvent) => void): () => void` to `SessionManager` in Plan 2 Task 9, emitting each drained event before its own handling, and remove the optional-call `?.`. A second `nextEvents` loop would race the first for the same events, so a tap on the one loop is the right shape.
-3. `SftpBrowser` in Task 10 calls `useStore` conditionally. Split it into an outer component that checks for a session and an inner one keyed on `sessionId` that always calls the hook.
-
-**Type consistency:** `TermifApi` (Task 1) is implemented by the preload (Task 1) and consumed by `createPlatform` (Task 4); handle types are `string` across IPC and `bigint` on both sides of it, converted only in `native.ts` and `platform.ts`. `SerialisedSshEvent` variants (Task 1) match `serialiseEvents` output (Task 2) and `deserialiseEvent` input (Task 4). Core types used here — `Host`, `HostInput`, `Snippet`, `SnippetInput`, `SyncStatus`, `TransferView`, `ForwardView`, `ConnectCredential`, `SessionManager`, `TransferManager`, `ForwardManager`, `Store`, `Vault`, `SheetClient`, `SyncEngine` — all come from Plan 2's stated exports.
-
-**Deliberate scope note:** the Google sign-in screen (device-flow UI) is not built here. `GoogleAuth` and its channels exist, and `bootApp` creates a `SyncEngine` only when a spreadsheet id is stored, so the app runs fully offline against the local database until sign-in is added. That screen is small and self-contained; it belongs in a follow-up task alongside first-run spreadsheet creation, and is called out here rather than left implied.
+**Type consistency:** `TermifApi` (Task 1) is implemented by the preload (Task 1) and consumed by `createPlatform` (Task 4); handle types are `string` across IPC and `bigint` on both sides of it, converted only in `native.ts` and `platform.ts`. `SerialisedSshEvent` variants (Task 1) match `serialiseEvents` output (Task 2) and `deserialiseEvent` input (Task 4). Core types used here — `Host`, `HostInput`, `Snippet`, `SnippetInput`, `SyncStatus`, `TransferView`, `ForwardView`, `ConnectCredential`, `SessionManager`, `TransferManager`, `ForwardManager`, `Store`, `Vault`, `SheetClient`, `SyncEngine` — all come from Plan 2's stated exports. `TermifApi.auth.hasSession` (Task 1/3) is what Task 12 uses to skip a device flow that already completed.

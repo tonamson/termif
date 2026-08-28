@@ -2,24 +2,26 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the shared TypeScript core — vault crypto, local store, Google Sheet sync, session/transfer/forward management, and i18n — so both shells consume one logic layer.
+**Goal:** Build the shared TypeScript core — vault crypto, local store, Google Sheet sync, session/transfer/forward management, and i18n — as the one logic layer the desktop shell consumes.
 
-**Architecture:** Plain TypeScript with the platform injected as an interface (`Platform`). No import from Electron or React Native anywhere in this package; a CI build with no platform bound enforces it. The `SshBridge` interface is the seam over Plan 1's FFI, with one drain loop fanning events out to subscribers.
+**Scope revision (2026-08-28):** v1 is desktop only; the mobile shells are deferred (spec §11). This plan is unchanged in substance. Core has exactly one consumer in v1, and the `Platform` seam stays because it is what makes core testable without Electron in the process — the CI purity check in Task 12 is a v1 requirement, not a favour to a future shell.
+
+**Architecture:** Plain TypeScript with the platform injected as an interface (`Platform`). No import from Electron, Node, or any UI framework anywhere in this package; a CI build with no platform bound enforces it. The `SshBridge` interface is the seam over Plan 1's FFI, with one drain loop fanning events out to subscribers.
 
 **Tech Stack:** TypeScript 5.6 (strict), Vitest, `@noble/ciphers` (XChaCha20-Poly1305), `@noble/hashes` (Argon2id), `zod` for row parsing, `tsup` for build.
 
 **Spec:** `docs/superpowers/specs/2026-08-28-termif-crossplatform-ssh-design.md`
 
-**Depends on:** Plan 1 (the `SshBridge` shape mirrors the FFI surface built there). Where this plan names an FFI function, it matches Plan 1 Task 11/12 exactly. If Plan 1 landed with a changed signature, reconcile against the built binding rather than trusting this document.
+**Depends on:** Plan 1 (the `SshBridge` shape mirrors the FFI surface built there). Where this plan names an FFI function, it matches Plan 1 Task 11 — the napi binding, which is the only binding in v1. If Plan 1 landed with a changed signature, reconcile against the built binding rather than trusting this document.
 
 ## Global Constraints
 
 - TypeScript `strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`.
-- Zero imports from `electron`, `react-native`, `react`, `fs`, `path`, or any Node built-in in `packages/core/src`. Everything platform-shaped arrives through `Platform`. Task 12 adds the CI check that enforces this.
+- Zero imports from `electron`, `react`, `fs`, `path`, or any Node built-in in `packages/core/src`. Everything platform-shaped arrives through `Platform`. Task 12 adds the CI check that enforces this. This holds with one shell: it is what lets every test below run against a fake `Platform` with no Electron process.
 - Every user-facing string goes through `t()`. `en` is the only locale in v1 (spec §6).
-- Handle ids are `bigint` in TypeScript, matching napi's `BigInt` and uniffi's `u64`.
+- Handle ids are `bigint` in TypeScript, matching napi's `BigInt`.
 - Crypto parameters are read from the Sheet's `meta` tab, never hardcoded at a call site (spec §4).
-- Argon2id defaults for a new vault: `m = 65536` KiB (64 MiB), `t = 3`, `p = 1`, 32-byte output. Chosen to stay under a mid-range phone's per-app memory budget while costing a brute-forcer real RAM; `meta.kdf_params` carries them so they can be raised later without breaking existing vaults.
+- Argon2id defaults for a new vault: `m = 65536` KiB (64 MiB), `t = 3`, `p = 1`, 32-byte output. 64 MiB costs a brute-forcer real RAM per guess while unlocking in well under a second on any desktop. `meta.kdf_params` carries the values so they can be raised later without breaking existing vaults, and the schema floor is 16 MiB (Task 4) — below that Argon2id stops being meaningfully memory-hard.
 - The vault key is a `Uint8Array` held only in memory, zeroed on lock.
 - All timestamps are ISO-8601 UTC strings (`2026-08-28T10:00:00.000Z`), compared lexicographically — which is also chronological for this format.
 
@@ -145,10 +147,10 @@ describe('parseFfiError', () => {
     expect(err.message).toContain('example.com')
   })
 
-  it('extracts the code from a uniffi-style Failed shape', () => {
-    // uniffi surfaces `SshFfiError.Failed { code, message }`; the bridge
-    // flattens it to the same "code: message" string, but a raw object may
-    // also arrive from a hand-written bridge.
+  it('extracts the code from a raw { code, message } object', () => {
+    // The IPC boundary does not preserve an Error, so the desktop bridge may
+    // rethrow a plain object. Accepting that shape means the bridge does not
+    // have to re-stringify into "code: message" just to be parsed again.
     const err = parseFfiError({ code: 'auth', message: 'authentication failed' })
     expect(err.code).toBe('auth')
     expect(err.message).toBe('authentication failed')
@@ -199,8 +201,8 @@ Expected: FAIL — `src/errors.ts` does not exist.
 ```typescript
 /**
  * Everything platform-shaped arrives through this interface. `packages/core`
- * imports nothing from Electron, React Native, or Node, so the same logic runs
- * in both shells (spec §6).
+ * imports nothing from Electron, Node, or any UI framework, which is what lets
+ * it be tested against a fake and driven by a second shell later (spec §6).
  */
 export interface Platform {
   readonly ssh: SshBridge
@@ -270,8 +272,8 @@ export interface SshDirEntry {
 }
 
 /**
- * A discriminated union over the flat napi shape and the uniffi tagged enum.
- * Each shell's bridge normalises into this before it reaches core.
+ * Normalised event shape. The shell's bridge converts the flat napi object
+ * into this before it reaches core, so core never sees an FFI-specific shape.
  */
 export type SshEvent =
   | { kind: 'channelData'; channelId: bigint; bytes: Uint8Array }
@@ -355,9 +357,10 @@ export class CoreError extends Error {
 const CODE_PREFIX = /^([a-z][a-z0-9_]*):\s(.*)$/s
 
 /**
- * Normalises whatever the bridge threw into a `CoreError`. Both bindings from
- * Plan 1 produce "code: message"; a raw `{ code, message }` object is also
- * accepted so a hand-written bridge does not have to stringify first.
+ * Normalises whatever the bridge threw into a `CoreError`. Plan 1's napi
+ * binding produces "code: message"; a raw `{ code, message }` object is also
+ * accepted, because an Error does not survive the IPC boundary intact and the
+ * bridge should not have to re-stringify just to be re-parsed.
  */
 export function parseFfiError(e: unknown): CoreError {
   if (e instanceof CoreError) return e
@@ -504,6 +507,18 @@ export const en = {
   'sync.running': 'Syncing…',
   'sync.failed': 'Sync failed: {reason}. Working from this device.',
   'sync.quota': 'Google rate-limited the sync. Retrying shortly.',
+  'sync.offline': 'Working on this device only',
+  'sync.signIn': 'Sign in to Google to sync',
+  'sync.signIn.body':
+    'Termif stores encrypted host data in a Google Sheet you own. Google never sees a readable password.',
+  'sync.signIn.start': 'Sign in with Google',
+  'sync.signIn.code': 'Enter this code: {code}',
+  'sync.signIn.open': 'Open Google in your browser',
+  'sync.signIn.waiting': 'Waiting for Google…',
+  'sync.signIn.denied': 'Google denied access: {reason}',
+  'sync.signIn.expired': 'The code expired. Start again.',
+  'sync.signIn.cancel': 'Not now',
+  'sync.signOut': 'Disconnect Google',
 
   'session.reconnecting': 'Connection lost. Reconnecting…',
   'session.reconnected':
@@ -813,7 +828,8 @@ const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456
 /**
  * 22 characters of base64url from 128 random bits. Ids are generated on four
  * devices with no coordinator, so collision resistance matters more than
- * brevity; `crypto.getRandomValues` is available in both shells' JS runtimes.
+ * brevity; `crypto.getRandomValues` is a Web Crypto global, present in every
+ * JS runtime this will ever run in.
  */
 export function newId(): string {
   const bytes = new Uint8Array(16)
@@ -2236,6 +2252,7 @@ git commit -m "feat(core): add last-write-wins row merge with deterministic tie-
 - Produces from `client.ts` a `SheetClient` class:
   - `constructor(net: HttpClient, accessToken: () => Promise<string>)`
   - `async createSpreadsheet(title): Promise<string>` — creates the four tabs with headers, returns the id
+  - `async findSpreadsheetByTitle(title): Promise<string | null>` — Drive `files.list` under `drive.file`; a second device must reuse the existing sheet (spec §4)
   - `async readTab(spreadsheetId, tab): Promise<string[][]>`
   - `async writeRows(spreadsheetId, tab, rowIndexToCells): Promise<void>` — one `values:batchUpdate`
   - `async appendRows(spreadsheetId, tab, rows): Promise<void>`
@@ -2806,6 +2823,25 @@ describe('SheetClient', () => {
     expect(headers.data).toHaveLength(4)
     expect(headers.data[0]?.values[0]?.[0]).toBe('id')
   })
+
+  it('finds an existing Termif spreadsheet by title', async () => {
+    const http = new FakeHttp()
+    http.enqueue(json(200, { files: [{ id: 'existing-sheet' }] }))
+
+    expect(await client(http).findSpreadsheetByTitle('Termif')).toBe('existing-sheet')
+
+    const url = http.requests[0]?.url ?? ''
+    expect(url).toContain('https://www.googleapis.com/drive/v3/files')
+    expect(url).toContain(encodeURIComponent("name = 'Termif'"))
+    expect(url).toContain('orderBy=createdTime')
+  })
+
+  it('returns null when no Termif spreadsheet exists yet', async () => {
+    const http = new FakeHttp()
+    http.enqueue(json(200, { files: [] }))
+
+    expect(await client(http).findSpreadsheetByTitle('Termif')).toBeNull()
+  })
 })
 ```
 
@@ -2894,6 +2930,24 @@ export class SheetClient {
     })
 
     return id
+  }
+
+  /**
+   * A second device must attach the sheet the first device created, not open a
+   * new vault. `drive.file` lists only files this app created for this user.
+   * Oldest match wins so two racing first-runs still converge.
+   */
+  async findSpreadsheetByTitle(title: string): Promise<string | null> {
+    const escaped = title.replace(/'/g, "\\'")
+    const q = encodeURIComponent(
+      `name = '${escaped}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+    )
+    const response = await this.#send<{ files?: { id?: string }[] }>({
+      method: 'GET',
+      url: `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&orderBy=createdTime&pageSize=1`,
+    })
+    const id = response.files?.[0]?.id
+    return id === undefined || id.length === 0 ? null : id
   }
 
   /** Returns data rows only; the header row is dropped. */
@@ -3026,7 +3080,7 @@ function describe(status: number, body: string): string {
 - [ ] **Step 9: Run the client test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/sheetClient.test.ts`
-Expected: PASS, 14 tests.
+Expected: PASS, 16 tests.
 
 - [ ] **Step 10: Commit**
 
@@ -3579,6 +3633,7 @@ git commit -m "feat(core): add sync engine with pull, merge, push, and debounce"
   - `subscribeTab(tab: TabId, onData: (bytes: Uint8Array) => void): () => void`
   - `onTabClosed(listener: (tab: TabId, exitStatus: number | null) => void): () => void`
   - `onSessionState(listener: (sessionId: bigint, state: SessionState) => void): () => void`
+  - `onBridgeEvent(listener: (event: SshEvent) => void): () => void` — tap on the one drain loop, fired before `#handle`. Plan 3 `bootApp` uses this to feed `TransferManager` and `ForwardManager`. A second `nextEvents` loop would race for the same events.
   - `type SessionState = 'connected' | 'reconnecting' | 'closed'`
   - `type TabId = string`
 - Reconnect: on `sessionClosed` for a session the manager did not close deliberately, retry with backoff, then reopen a channel per tab. Terminal contents are not restored — plain SSH has no resume (spec §6).
@@ -3903,6 +3958,37 @@ describe('SessionManager', () => {
     })
   })
 
+  it('taps every drained event before handling it, including kinds it ignores', async () => {
+    // Transfer and forward events share this queue. A second nextEvents loop
+    // would race; a tap on the one loop is the only safe fan-out (Plan 3 boot).
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh)
+    await manager.start()
+
+    const seen: string[] = []
+    const unsubscribe = manager.onBridgeEvent((event) => seen.push(event.kind))
+
+    ssh.pushEvent({
+      kind: 'transferProgress',
+      transferId: 9n,
+      done: 1n,
+      total: 2n,
+    })
+    ssh.pushEvent({ kind: 'log', level: 'info', msg: 'hi' })
+    await eventually(() => seen.length === 2)
+
+    expect(seen).toEqual(['transferProgress', 'log'])
+
+    unsubscribe()
+    ssh.pushEvent({
+      kind: 'transferDone',
+      transferId: 9n,
+      error: null,
+    })
+    await new Promise((r) => setTimeout(r, 60))
+    expect(seen).toEqual(['transferProgress', 'log'])
+  })
+
   it('reports a tab closing with its exit status', async () => {
     const ssh = new FakeSsh()
     const manager = makeManager(ssh)
@@ -4073,6 +4159,7 @@ export class SessionManager {
   readonly #tabClosedListeners = new Set<(tab: TabId, exitStatus: number | null) => void>()
   readonly #sessionStateListeners = new Set<(sessionId: bigint, state: SessionState) => void>()
   readonly #logListeners = new Set<(level: string, msg: string) => void>()
+  readonly #bridgeEventListeners = new Set<(event: SshEvent) => void>()
 
   #draining = false
   #drainPromise: Promise<void> | null = null
@@ -4114,6 +4201,11 @@ export class SessionManager {
   onLog(listener: (level: string, msg: string) => void): () => void {
     this.#logListeners.add(listener)
     return () => this.#logListeners.delete(listener)
+  }
+
+  onBridgeEvent(listener: (event: SshEvent) => void): () => void {
+    this.#bridgeEventListeners.add(listener)
+    return () => this.#bridgeEventListeners.delete(listener)
   }
 
   async connect(host: Host, credential: ConnectCredential): Promise<bigint> {
@@ -4243,7 +4335,10 @@ export class SessionManager {
         await sleep(500)
         continue
       }
-      for (const event of events) this.#handle(event)
+      for (const event of events) {
+        for (const listener of this.#bridgeEventListeners) listener(event)
+        this.#handle(event)
+      }
     }
   }
 
@@ -4275,8 +4370,8 @@ export class SessionManager {
         return
       }
       // transferProgress, transferDone, and forwardAccepted belong to the
-      // transfer and forward managers, which subscribe to the bridge through
-      // their own handlers (Tasks 10 and 11).
+      // transfer and forward managers. They tap this loop via onBridgeEvent
+      // (Plan 3 bootApp) rather than opening a second nextEvents poll.
       default:
         return
     }
@@ -4368,7 +4463,7 @@ export * from './sessions.js'
 ```
 
 Run: `cd packages/core && npx vitest run test/sessions.test.ts && npm run typecheck`
-Expected: PASS, 14 tests, no type errors.
+Expected: PASS, 15 tests, no type errors.
 
 - [ ] **Step 6: Commit**
 
@@ -4772,6 +4867,21 @@ git commit -m "feat(core): add transfer queue with concurrency limit and cancell
   - `async rebuildForSession(oldSessionId, newSessionId): Promise<void>` — called after a reconnect
   - `onChange(listener): () => void`
 - `note` carries the platform caveat: on iOS a local or SOCKS forward is foreground-only (spec §5). The manager reports it; it does not pretend to work around an OS limit.
+
+**Scope note (2026-08-28).** v1 ships desktop only, so in practice
+`platformKind` is always `'desktop'` and `note` is always `null`. Both are
+built anyway, and deliberately:
+
+- `note` is a field on `ForwardView`, which every shell renders. Adding it
+  later means changing a type each shell consumes, plus its tests. Leaving the
+  seam open costs one nullable field.
+- `#noteFor` is four lines and fully covered by the tests below. Deleting the
+  two mobile branches would save nothing and lose the record of *why* the field
+  exists — which is the part that gets forgotten.
+
+Do not extend this to other platform branching. A nullable field and one small
+pure function are the whole budget; anything larger waits until a mobile shell
+actually exists to exercise it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -5216,7 +5326,19 @@ git commit -m "feat(core): add forward manager with platform notes and reconnect
 - Consumes: nothing.
 - Produces: an `npm run check:purity` script that exits non-zero when `src/` imports a forbidden module, and a CI job that runs typecheck, tests, and the purity check.
 
-This is the mechanical enforcement of the constraint that makes the whole plan work: one stray `import { ipcRenderer }` would break mobile at runtime, and a comment asking people not to do it is not enforcement (spec §6).
+This is the mechanical enforcement of the constraint that makes the whole plan work, and a comment asking people not to do it is not enforcement (spec §6).
+
+Two things it buys in v1, before any second shell exists:
+
+- Every test in Tasks 4–11 runs against a fake `Platform` with no Electron in
+  the process. One `import { ipcRenderer }` in `src/` and those tests start
+  needing a real main process to run at all.
+- An accidental `node:crypto` or `node:fs` import would put core's behaviour on
+  the host's version of those modules instead of the injected seam, which is
+  how a "works on my machine" crypto bug gets in.
+
+`react-native` and its friends stay in the forbidden list. They cannot be
+imported today, so the entry costs nothing and holds the line for spec §11.
 
 - [ ] **Step 1: Write the checker**
 
@@ -5399,7 +5521,9 @@ git commit -m "ci(core): enforce platform purity, typecheck, and tests"
 | §4 vault key in memory, zeroed on lock | Task 4 |
 | §4 "remember this device" behind biometrics | Task 4 |
 | §4 pull, merge LWW with id tie-break, push | Tasks 6, 8 |
+| §4 find existing spreadsheet before creating one | Task 7 (`findSpreadsheetByTitle`) |
 | §4 debounced sync, not realtime | Task 8 |
+| §6 one drain loop with a tap for transfers/forwards | Task 9 (`onBridgeEvent`) |
 | §6 `Platform` injection, no platform imports | Tasks 1, 12 |
 | §6 six core modules | Tasks 4, 5, 8, 9, 10, 11 |
 | §6 one drain loop, fan-out, no ANSI parsing | Task 9 |
@@ -5408,12 +5532,15 @@ git commit -m "ci(core): enforce platform purity, typecheck, and tests"
 | §7 error classes, offline default | Tasks 1, 7, 8 |
 | §7 host key mismatch is a hard block | Task 1 (`isSecurityBlock`) |
 | §8 unit tests with a fake `Platform` | Tasks 4–11 (fakes in `test/fakes/`) |
-| §5 iOS/Android forwarding limits surfaced | Task 11 |
+| §5 forwarding `note` seam (no v1 platform is restricted) | Task 11 |
+| §11 core stays shell-agnostic | Task 12's purity check, which is what keeps the deferred phase from forking core |
 
-**Open spec question now closed:** the spec left Argon2id parameters unspecified. This plan fixes the defaults at `m = 65536, t = 3, p = 1` with a 16 MiB floor enforced by the schema, and records the reasoning in the Global Constraints.
+**Crypto parameters:** Argon2id defaults `m = 65536, t = 3, p = 1` with a 16 MiB schema floor match spec §4. `meta.kdf_params` carries the values so they can be raised later.
 
 **Placeholders:** none. Every step carries runnable code or an exact command.
 
-**Type consistency:** `SshBridge` in Task 1 matches `FakeSsh` in Task 9 and the FFI surface of Plan 1 Tasks 11–12. `Host`/`StoredCredential`/`Snippet` field names are identical across Tasks 3, 5, 7, 8. `RowKind` values (`'hosts' | 'credentials' | 'snippets'`) match the tab names in Task 7 and the `KINDS` table in Task 8. `CoreError` codes used in assertions (`vault_wrong_password`, `vault_locked`, `vault_bad_ciphertext`, `sheet_quota`, `sheet_request`, `sheet_unauthorized`, `sheet_bad_row`, `sheet_bad_meta`, `no_such_tab`, `tab_reconnecting`, `no_such_transfer`, `no_such_forward`, `auth`) are each thrown by exactly the module the test exercises.
+**Type consistency:** `SshBridge` in Task 1 matches `FakeSsh` in Task 9 and the FFI surface of Plan 1 Task 11. `Host`/`StoredCredential`/`Snippet` field names are identical across Tasks 3, 5, 7, 8. `RowKind` values (`'hosts' | 'credentials' | 'snippets'`) match the tab names in Task 7 and the `KINDS` table in Task 8. `CoreError` codes used in assertions (`vault_wrong_password`, `vault_locked`, `vault_bad_ciphertext`, `sheet_quota`, `sheet_request`, `sheet_unauthorized`, `sheet_bad_row`, `sheet_bad_meta`, `no_such_tab`, `tab_reconnecting`, `no_such_transfer`, `no_such_forward`, `auth`) are each thrown by exactly the module the test exercises.
 
 **Cross-plan dependency:** `SshBridge` (Task 1) is this plan's contract with Plan 1's FFI. At execution time, check it against the built binding — Plan 1's napi export names and argument order are the authority if the two ever disagree.
+
+**Scope-cut check (2026-08-28).** Deferring mobile removed no task and no test from this plan. Two things were kept deliberately rather than cut, each justified at its own site: the `note` field and `#noteFor` in Task 11, and the `react-native` entries in Task 12's forbidden list. Both are small, both are covered, and both would have to be re-added verbatim. Everything else in this plan was always shell-agnostic.

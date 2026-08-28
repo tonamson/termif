@@ -3,6 +3,10 @@
 Read this first. It is the only file that tracks what exists, what is next, and
 what still has to be written.
 
+**Scope, as of 2026-08-28: v1 is macOS and Windows only.** The React Native
+mobile shells are deferred to a later phase, recorded in spec §11. Plan 4 is
+not "not written yet" — it is out of v1 scope. Three plans, not four.
+
 **Spec:** [`specs/2026-08-28-termif-crossplatform-ssh-design.md`](specs/2026-08-28-termif-crossplatform-ssh-design.md)
 — the design every plan argues from. Read it before any plan.
 
@@ -10,14 +14,18 @@ what still has to be written.
 
 | # | Plan | Tasks | Status | Blocks |
 |---|---|---|---|---|
-| 1 | [`plans/2026-08-28-termif-01-ssh-core.md`](plans/2026-08-28-termif-01-ssh-core.md) — Rust `ssh-core` + napi/uniffi bridges | 13 | not started | 2, 3, 4 |
-| 2 | [`plans/2026-08-28-termif-02-core-ts.md`](plans/2026-08-28-termif-02-core-ts.md) — shared TypeScript core | 12 | not started | 3, 4 |
-| 3 | [`plans/2026-08-28-termif-03-desktop.md`](plans/2026-08-28-termif-03-desktop.md) — Electron desktop shell | 11 | not started | — |
-| 4 | **not written yet** — React Native mobile shell | — | **plan missing** | — |
+| 1 | [`plans/2026-08-28-termif-01-ssh-core.md`](plans/2026-08-28-termif-01-ssh-core.md) — Rust `ssh-core` + napi bridge | 12 | not started | 2, 3 |
+| 2 | [`plans/2026-08-28-termif-02-core-ts.md`](plans/2026-08-28-termif-02-core-ts.md) — shared TypeScript core | 12 | not started | 3 |
+| 3 | [`plans/2026-08-28-termif-03-desktop.md`](plans/2026-08-28-termif-03-desktop.md) — Electron desktop shell | 12 | not started | — |
+| — | React Native mobile shell | — | **deferred, out of v1 scope** (spec §11) | — |
 
-Plan 1 goes first because it carries the largest risk — a four-target Rust
-toolchain — and everything else stands on it. Finding out it is wrong in week
-one is much cheaper than in week six.
+Plan 1 goes first because it carries the largest risk — the Rust toolchain and
+the FFI boundary — and everything else stands on it. Finding out it is wrong in
+week one is much cheaper than in week six.
+
+Plan 1 has 12 tasks numbered 1–11 and 13. Task 12 was the uniffi binding; its
+heading is kept as a stub so the numbering does not shift under references that
+already exist. The gap is deliberate, not a lost task.
 
 ## How to track progress without a separate tool
 
@@ -29,6 +37,13 @@ Three signals, in increasing order of trustworthiness:
        grep -c '^- \[ \]' docs/superpowers/plans/*.md   # steps remaining
        grep -c '^- \[x\]' docs/superpowers/plans/*.md   # steps done
 
+   As of 2026-08-28: 228 steps remain across the three plans — 63 in Plan 1,
+   73 in Plan 2, 92 in Plan 3. None are ticked. This checkout has no
+   implementation yet.
+
+   Run the count with `/usr/bin/grep` if your shell wraps `grep`; some
+   wrappers truncate piped output and will undercount badly.
+
 2. **Commit messages.** Each task ends with a commit whose message the plan
    spells out, so `git log --oneline` reads as a task list.
 
@@ -38,59 +53,41 @@ Three signals, in increasing order of trustworthiness:
 
 ## Work still owed
 
-### Plan 4 — React Native mobile shell (not written)
+None in v1's spec or plans. Google sign-in, first-run spreadsheet attach,
+`onBridgeEvent`, `fakePlatform` async, and the `SftpBrowser` hook split are
+inlined in the plans (Plan 2 Tasks 7 and 9; Plan 3 Tasks 5, 10, and 12).
 
-The spec covers it (§3, §5, §6), and Plan 2 was built to serve it — `Platform`
-injection and the `ForwardManager` platform notes exist for this shell. Writing
-it should wait until Plans 1 and 2 are actually built, because it depends on
-their real signatures rather than their planned ones.
+## Deferred: the mobile phase
 
-Scope, from the spec:
+Out of v1 scope, not cancelled. Spec §11 has the full record. The short
+version: it adds `crates/ffi-uniffi`, `apps/mobile`, `xterm.js` in a WebView, a
+keyboard accessory bar, biometric key wrapping, and a `packages/ui-shared`
+extracted from whichever desktop components turn out to be worth sharing.
 
-- React Native shell with a `Platform` built over the uniffi native module
-  (Plan 1 Task 12), mirroring `apps/desktop/src/renderer/platform.ts`.
-- `xterm.js` inside `react-native-webview`, bytes bridged via `postMessage` —
-  the same emulator as desktop (spec §6).
-- A keyboard accessory bar: `Tab`, `Ctrl`, `Esc`, arrows, `|`, `~`, `/`, and a
-  snippet button. Without it, SSH on a phone is unusable, which is why snippets
-  matter more here than on desktop.
-- Vault key wrapped behind biometrics via Keychain/Keystore.
-- iOS foreground-only forwarding, surfaced through the note `ForwardManager`
-  already attaches; Android foreground service for background forwards.
-- Two build integrations: the XCFramework and the `jniLibs`/Kotlin output from
-  `scripts/build-ios.sh` and `scripts/build-android.sh`.
+What matters while building v1 is the other half of §11 — four things v1 must
+not do, or that phase stops being a new shell and becomes a rewrite:
 
-### Desktop: Google sign-in screen (deferred, called out in Plan 3)
+1. No Electron, Node, or `ipcRenderer` import inside `packages/core`.
+   Enforced by the purity check in Plan 2 Task 12.
+2. No configuration read inside `ssh-core`; all input arrives as parameters.
+   Enforced by Plan 1's Global Constraints.
+3. No callback, closure, or object across the FFI boundary — handles cross as
+   `u64`, events are pulled by long poll.
+4. No ANSI parsing in core; the byte path from channel to emulator stays
+   opaque.
 
-`GoogleAuth` and its IPC channels are built in Plan 3 Task 3, but no UI drives
-them. Until that screen exists the app runs fully offline against the local
-database — `bootApp` creates a `SyncEngine` only when a spreadsheet id is
-already stored. The screen needs: device-flow code display, a poll loop, and
-first-run spreadsheet creation via `SheetClient.createSpreadsheet`.
-
-### Three fixes Plan 3 flags against itself
-
-Each is described at its own site in the plan and again in Plan 3's
-Self-Review. Apply them while implementing:
-
-1. Task 5 — `fakePlatform` uses a top-level `await` inside a non-async
-   function. Make it `async`; `await` it at both call sites.
-2. Task 5 — `bootApp` calls `sessions.onBridgeEvent`, which Plan 2 does not
-   define. Add `onBridgeEvent(listener: (event: SshEvent) => void): () => void`
-   to `SessionManager` in **Plan 2 Task 9**, emitting each drained event before
-   its own handling, then drop the optional-call `?.`. Do not open a second
-   `nextEvents` loop — two loops would race for the same events.
-3. Task 10 — `SftpBrowser` calls `useStore` conditionally, which React forbids.
-   Split it into an outer component that checks for a session and an inner one,
-   keyed on `sessionId`, that always calls the hook.
+Each is a v1 requirement on its own merits — testability, and not crashing the
+host process on a panic — so none of them is cost carried for mobile's sake.
+That is the reason they are safe to keep while mobile is deferred.
 
 ## Decisions already settled
 
 Do not relitigate these while implementing; the spec records the reasoning.
 
-- Mobile gets a real SSH terminal, not a host manager.
+- v1 ships macOS and Windows. Mobile is deferred (spec §11).
+- Mobile, when built, gets a real SSH terminal, not a host manager.
 - The Google Sheet holds ciphertext; the key is derived client-side.
-- One Rust protocol core over FFI, one shared TypeScript core, two UI shells.
+- One Rust protocol core over FFI, one shared TypeScript core, one UI shell in v1.
 - Per-row last-write-wins on `updatedAt`, with the row id as tie-break.
 - `known_hosts` is per-device and never synced.
 - A host key mismatch is a hard block with no override.
