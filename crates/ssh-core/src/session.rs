@@ -29,8 +29,6 @@ pub(crate) struct Session {
     // session is shared behind `Arc`, which cannot yield `&mut`. Tokio's
     // `Mutex` provides Send-safe interior mutability we can hold across await.
     pub(crate) handle: tokio::sync::Mutex<client::Handle<ClientHandler>>,
-    pub(crate) host: String,
-    pub(crate) port: u16,
 }
 
 static CORE: OnceLock<Core> = OnceLock::new();
@@ -199,8 +197,6 @@ pub async fn connect(cfg: ConnectConfig) -> SshResult<SessionId> {
 
     let id = core.sessions.insert(Session {
         handle: tokio::sync::Mutex::new(handle),
-        host: cfg.host,
-        port: cfg.port,
     });
     Ok(SessionId::from_raw(id))
 }

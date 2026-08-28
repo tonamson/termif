@@ -11,7 +11,6 @@ use crate::types::{ChannelId, PtySize, SessionId};
 /// mutex so concurrent writes from the UI serialise.
 pub(crate) struct ChannelEntry {
     writer: Mutex<russh::ChannelWriteHalf<russh::client::Msg>>,
-    pub(crate) session_id: SessionId,
 }
 
 pub async fn open_shell(session: SessionId, pty: PtySize) -> SshResult<ChannelId> {
@@ -53,7 +52,6 @@ pub async fn open_shell(session: SessionId, pty: PtySize) -> SshResult<ChannelId
     let (mut reader, writer) = channel.split();
     let id_raw = core.channels.insert(ChannelEntry {
         writer: Mutex::new(writer),
-        session_id: session,
     });
     let id = ChannelId::from_raw(id_raw);
 
