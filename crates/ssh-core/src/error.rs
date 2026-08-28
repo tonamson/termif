@@ -7,9 +7,17 @@ pub enum SshError {
     #[error("authentication failed: {msg}")]
     Auth { msg: String },
     #[error("unknown host key for {host}")]
-    HostKeyUnknown { host: String, fingerprint: String, algo: String },
+    HostKeyUnknown {
+        host: String,
+        fingerprint: String,
+        algo: String,
+    },
     #[error("host key mismatch for {host}")]
-    HostKeyMismatch { host: String, expected: String, got: String },
+    HostKeyMismatch {
+        host: String,
+        expected: String,
+        got: String,
+    },
     #[error("no such session")]
     NoSuchSession,
     #[error("no such channel")]
