@@ -1,0 +1,12 @@
+services:
+  sshd:
+    image: linuxserver/openssh-server:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - PASSWORD_ACCESS=true
+      - USER_NAME=termif
+      - USER_PASSWORD=termif-test-pw
+      - SUDO_ACCESS=false
+    ports:
+      - "22022:2222"
