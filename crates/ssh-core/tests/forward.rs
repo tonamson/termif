@@ -165,3 +165,32 @@ async fn closing_an_unknown_forward_errors() {
         .expect_err("stale forward handles must not resolve");
     assert_eq!(err.code(), "no_such_forward");
 }
+
+/// End-to-end `-R` against the real server: register a remote forward on port
+/// 0 so the server picks the bound port, and prove the caller learns which port
+/// it chose. A full byte-flow round trip is not attempted here because the
+/// `-R` listener lives inside the container, which needs a `docker exec`
+/// round-trip (see report%).
+#[tokio::test]
+async fn remote_forward_port_zero_resolves_to_the_server_assigned_port() {
+    require_server!();
+    let session = connected_session("fwd-remote").await;
+
+    // Leave `local_port` pointing at nothing valid on purpose: forwarding to a
+    // missing host side is fine, we only need the server to bind and report.
+    let id = ssh_core::forward_remote(session, "127.0.0.1".into(), 0, "127.0.0.1".into(), 1)
+        .await
+        .expect("start remote forward");
+    let assigned = ssh_core::forward_bound_port(id).await.expect("bound port");
+    assert_ne!(
+        assigned, 0,
+        "port 0 must resolve to the server-assigned port"
+    );
+    assert!(
+        (1..=u16::MAX).contains(&assigned),
+        "assigned port out of range: {assigned}"
+    );
+
+    ssh_core::close_forward(id).await.expect("close forward");
+    ssh_core::disconnect(session).await.unwrap();
+}

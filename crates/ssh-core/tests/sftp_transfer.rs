@@ -207,3 +207,65 @@ async fn cancelling_an_unknown_transfer_errors() {
         .expect_err("stale transfer handles must not resolve");
     assert_eq!(err.code(), "no_such_transfer");
 }
+
+#[tokio::test]
+#[serial]
+async fn cancelling_a_download_removes_the_partial_temp_file() {
+    require_server!();
+    let session = connected_session("xfer-dl-cancel").await;
+
+    // A large source so the download is demonstrably in flight when we cancel.
+    let local_up = write_temp_file("dlcancel-src.bin", 40 * 1024 * 1024);
+    let remote = format!("termif-dlcancel-{}.bin", std::process::id());
+    let up = ssh_core::sftp_upload(
+        session,
+        local_up.to_string_lossy().to_string(),
+        remote.clone(),
+    )
+    .await
+    .expect("start upload");
+    let (err, _) = await_transfer(up, Duration::from_secs(120)).await;
+    assert!(err.is_none(), "setup upload failed: {err:?}");
+
+    let local_down =
+        std::env::temp_dir().join(format!("termif-dlcancel-{}.bin", std::process::id()));
+    let _ = std::fs::remove_file(&local_down);
+    let tmp = format!("{}.part", local_down.to_string_lossy());
+
+    let id = ssh_core::sftp_download(
+        session,
+        remote.clone(),
+        local_down.to_string_lossy().to_string(),
+    )
+    .await
+    .expect("start download");
+
+    let started = Instant::now();
+    loop {
+        let events = ssh_core::next_events(200).await;
+        if events
+            .iter()
+            .any(|e| matches!(e, Event::TransferProgress { transfer_id, .. } if *transfer_id == id))
+        {
+            break;
+        }
+        if started.elapsed() > Duration::from_secs(30) {
+            panic!("download never started within 30s");
+        }
+    }
+    ssh_core::cancel_transfer(id).await.expect("cancel");
+
+    let (error, _) = await_transfer(id, Duration::from_secs(60)).await;
+    assert!(
+        error.is_some(),
+        "a cancelled download must not report success"
+    );
+    assert!(
+        !std::path::Path::new(&tmp).exists(),
+        "the .part temp must be removed when a download fails/cancels"
+    );
+
+    ssh_core::sftp_remove(session, remote, false).await.ok();
+    let _ = std::fs::remove_file(&local_up);
+    ssh_core::disconnect(session).await.unwrap();
+}

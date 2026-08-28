@@ -32,14 +32,14 @@ pub async fn forward_local(
         .map_err(fwd_err)?;
     let bound_port = listener.local_addr().map_err(fwd_err)?.port();
 
+    let queue = events()?;
+    let sess = session_of(session)?;
     let cancel = CancellationToken::new();
     let id_raw = core.forwards.insert(ForwardEntry {
         cancel: cancel.clone(),
         bound_port,
     });
     let id = ForwardId::from_raw(id_raw);
-    let queue = events()?;
-    let sess = session_of(session)?;
 
     core.runtime.spawn(async move {
         loop {
@@ -108,27 +108,45 @@ pub async fn forward_remote(
     let core = core()?;
     let sess = session_of(session)?;
 
-    sess.handle
+    // `tcpip_forward` returns the server-assigned port only for a `:0` request;
+    // for a fixed port the reply carries no port and it returns 0. So the bound
+    // port the caller sees is the requested one, unless the server picked it.
+    let assigned = sess
+        .handle
         .lock()
         .await
         .tcpip_forward(&remote_bind_host, remote_bind_port as u32)
         .await
         .map_err(fwd_err)?;
+    let bound_port = if remote_bind_port == 0 {
+        u16::try_from(assigned).map_err(|_| fwd_err("server assigned an invalid bound port"))?
+    } else {
+        remote_bind_port
+    };
 
+    let queue = events()?;
     let cancel = CancellationToken::new();
     let id_raw = core.forwards.insert(ForwardEntry {
         cancel: cancel.clone(),
-        bound_port: remote_bind_port,
+        bound_port,
     });
     let id = ForwardId::from_raw(id_raw);
-    let queue = events()?;
 
     // Incoming forwarded-tcpip channels arrive through the session handler.
     // Registering the destination is enough here; the handler pairs them.
-    crate::session::register_remote_forward(id, local_host, local_port, cancel.clone())?;
+    if let Err(e) = crate::session::register_remote_forward(
+        id,
+        bound_port,
+        local_host,
+        local_port,
+        cancel.clone(),
+    ) {
+        core.forwards.remove(id.raw());
+        return Err(e);
+    }
     queue.push(Event::Log {
         level: "info".into(),
-        msg: format!("remote forward listening on {remote_bind_host}:{remote_bind_port}"),
+        msg: format!("remote forward listening on {remote_bind_host}:{bound_port}"),
     });
 
     Ok(id)
@@ -144,14 +162,14 @@ pub async fn forward_socks(session: SessionId, local_bind: String) -> SshResult<
         .map_err(fwd_err)?;
     let bound_port = listener.local_addr().map_err(fwd_err)?.port();
 
+    let queue = events()?;
+    let sess = session_of(session)?;
     let cancel = CancellationToken::new();
     let id_raw = core.forwards.insert(ForwardEntry {
         cancel: cancel.clone(),
         bound_port,
     });
     let id = ForwardId::from_raw(id_raw);
-    let queue = events()?;
-    let sess = session_of(session)?;
 
     core.runtime.spawn(async move {
         loop {
@@ -274,10 +292,14 @@ pub async fn forward_bound_port(id: ForwardId) -> SshResult<u16> {
 }
 
 pub async fn close_forward(id: ForwardId) -> SshResult<()> {
-    let entry = core()?
+    let core = core()?;
+    let entry = core
         .forwards
         .remove(id.raw())
         .ok_or(SshError::NoSuchForward)?;
+    // Drop any remote-forward registration so the routing map does not keep a
+    // cancelled entry accumulating across closes.
+    crate::session::unregister_remote_forward(id);
     entry.cancel.cancel();
     Ok(())
 }

@@ -169,12 +169,12 @@ pub async fn sftp_upload(
     remote: String,
 ) -> SshResult<TransferId> {
     let core = core()?;
+    let queue = events()?;
     let cancel = CancellationToken::new();
     let id_raw = core.transfers.insert(TransferEntry {
         cancel: cancel.clone(),
     });
     let id = TransferId::from_raw(id_raw);
-    let queue = events()?;
 
     core.runtime.spawn(async move {
         let result = upload_inner(session, &local, &remote, id, &queue, &cancel).await;
@@ -252,12 +252,12 @@ pub async fn sftp_download(
     local: String,
 ) -> SshResult<TransferId> {
     let core = core()?;
+    let queue = events()?;
     let cancel = CancellationToken::new();
     let id_raw = core.transfers.insert(TransferEntry {
         cancel: cancel.clone(),
     });
     let id = TransferId::from_raw(id_raw);
-    let queue = events()?;
 
     core.runtime.spawn(async move {
         let result = download_inner(session, &remote, &local, id, &queue, &cancel).await;
@@ -299,43 +299,61 @@ async fn download_inner(
     let mut done: u64 = 0;
     let mut last_report = std::time::Instant::now();
 
-    loop {
-        if cancel.is_cancelled() {
-            drop(dst);
-            tokio::fs::remove_file(&tmp).await.ok();
-            return Err(SshError::Sftp {
-                msg: "transfer cancelled".into(),
-            });
-        }
-        let n = src.read(&mut buf).await.map_err(sftp_err)?;
-        if n == 0 {
-            break;
-        }
-        dst.write_all(&buf[..n]).await?;
-        done += n as u64;
+    let result = async {
+        loop {
+            if cancel.is_cancelled() {
+                return Err(SshError::Sftp {
+                    msg: "transfer cancelled".into(),
+                });
+            }
+            let n = src.read(&mut buf).await.map_err(sftp_err)?;
+            if n == 0 {
+                break;
+            }
+            dst.write_all(&buf[..n]).await?;
+            done += n as u64;
 
-        if last_report.elapsed() >= PROGRESS_INTERVAL {
-            queue.push(Event::TransferProgress {
-                transfer_id: id,
-                done,
-                total,
-            });
-            last_report = std::time::Instant::now();
+            if last_report.elapsed() >= PROGRESS_INTERVAL {
+                queue.push(Event::TransferProgress {
+                    transfer_id: id,
+                    done,
+                    total,
+                });
+                last_report = std::time::Instant::now();
+            }
+        }
+        dst.flush().await?;
+        dst.sync_all().await?;
+        Ok(())
+    }
+    .await;
+
+    // Close the temp handle before renaming/removing; on any failure remove the
+    // `.part` temp and always close the sftp session so nothing is orphaned.
+    drop(dst);
+    match result {
+        Ok(()) => match tokio::fs::rename(&tmp, local).await {
+            Ok(()) => {
+                sftp.close().await.ok();
+                queue.push(Event::TransferProgress {
+                    transfer_id: id,
+                    done,
+                    total,
+                });
+                Ok(())
+            }
+            Err(e) => {
+                tokio::fs::remove_file(&tmp).await.ok();
+                sftp.close().await.ok();
+                Err(e.into())
+            }
+        },
+        Err(e) => {
+            tokio::fs::remove_file(&tmp).await.ok();
+            sftp.close().await.ok();
+            Err(e)
         }
     }
-
-    dst.flush().await?;
-    dst.sync_all().await?;
-    drop(dst);
-    tokio::fs::rename(&tmp, local).await?;
-    sftp.close().await.ok();
-
-    queue.push(Event::TransferProgress {
-        transfer_id: id,
-        done,
-        total,
-    });
-    Ok(())
 }
 
 pub async fn cancel_transfer(id: TransferId) -> SshResult<()> {
