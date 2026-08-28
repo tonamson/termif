@@ -10,3 +10,5 @@ services:
       - SUDO_ACCESS=false
     ports:
       - "22022:2222"
+    volumes:
+      - ./deploy/sshd_config.d:/config/sshd/sshd_config.d
