@@ -1,13 +1,13 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { t } from '@termif/core'
-import type { Host } from '@termif/core'
+import type { Host, HostConnectionState } from '@termif/core'
 import { groupHosts, type HostGroup } from '../state/grouping.js'
 
 export interface HostListProps {
   hosts: readonly Host[]
   query: string
   collapsedGroups?: readonly string[]
-  connectedIds?: readonly string[]
+  hostStates?: ReadonlyMap<string, HostConnectionState>
   onQueryChange(query: string): void
   onToggleGroup?: (name: string) => void
   onConnect(id: string): void
@@ -20,7 +20,7 @@ export function HostList({
   hosts,
   query,
   collapsedGroups = [],
-  connectedIds = [],
+  hostStates = new Map(),
   onQueryChange,
   onToggleGroup = () => {},
   onConnect,
@@ -101,7 +101,7 @@ export function HostList({
                       <li
                         key={host.id}
                         tabIndex={0}
-                        data-state={connectedIds.includes(host.id) ? 'connected' : 'closed'}
+                        data-state={hostStates.get(host.id) ?? 'closed'}
                         onKeyDown={(e) => onKeyDown(e, host.id)}
                         onDoubleClick={() => onConnect(host.id)}
                       >
@@ -109,11 +109,21 @@ export function HostList({
                         <span className="host-list__label u-clip">{host.label}</span>
                         <span className="host-list__target u-clip">{target(host)}</span>
                         <span className="host-list__actions">
-                          <button type="button" onClick={() => onConnect(host.id)}>
-                            {t('host.connect')}
+                          <button
+                            type="button"
+                            aria-label={t('host.connect')}
+                            title={t('host.connect')}
+                            onClick={() => onConnect(host.id)}
+                          >
+                            <span aria-hidden="true">▸</span>
                           </button>
-                          <button type="button" onClick={() => onEdit(host.id)}>
-                            {t('host.edit', { label: host.label })}
+                          <button
+                            type="button"
+                            aria-label={t('host.edit', { label: host.label })}
+                            title={t('host.editShort')}
+                            onClick={() => onEdit(host.id)}
+                          >
+                            <span aria-hidden="true">✎</span>
                           </button>
                           {confirming === host.id ? (
                             <>
@@ -132,8 +142,13 @@ export function HostList({
                               </button>
                             </>
                           ) : (
-                            <button type="button" onClick={() => setConfirming(host.id)}>
-                              {t('host.delete', { label: host.label })}
+                            <button
+                              type="button"
+                              aria-label={t('host.delete', { label: host.label })}
+                              title={t('host.deleteShort')}
+                              onClick={() => setConfirming(host.id)}
+                            >
+                              <span aria-hidden="true">✕</span>
                             </button>
                           )}
                         </span>

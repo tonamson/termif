@@ -5,6 +5,7 @@ import type { Platform, SshBridge, SshEvent } from './platform.js'
 
 export type TabId = string
 export type SessionState = 'connected' | 'reconnecting' | 'closed'
+export type HostConnectionState = 'connected' | 'reconnecting'
 
 export interface ConnectCredential {
   password?: string | undefined
@@ -71,6 +72,7 @@ export class SessionManager {
   readonly #sessionStateListeners = new Set<(sessionId: bigint, state: SessionState) => void>()
   readonly #logListeners = new Set<(level: string, msg: string) => void>()
   readonly #bridgeEventListeners = new Set<(event: SshEvent) => void>()
+  readonly #sessionStates = new Map<bigint, SessionState>()
 
   #draining = false
   #drainPromise: Promise<void> | null = null
@@ -145,6 +147,7 @@ export class SessionManager {
 
     const handleId = session?.handleId
     this.#sessions.delete(sessionId)
+    this.#sessionStates.delete(sessionId)
     if (handleId !== undefined) this.#handleToSession.delete(handleId)
 
     try {
@@ -221,8 +224,32 @@ export class SessionManager {
     return this.#sessions.get(sessionId)?.handleId ?? undefined
   }
 
+  /**
+   * Stable ids of the sessions open right now. A panel that mounts after the
+   * connection (the file browser lives in a drawer) has no state event to
+   * catch up on, so it reads the current set instead.
+   */
+  openSessionIds(): bigint[] {
+    return [...this.#sessions.keys()]
+  }
+
   connectedHostIds(): string[] {
     return [...this.#sessions.values()].map((s) => s.host.id)
+  }
+
+  /** Per-host connection state, strongest session wins. */
+  hostStates(): Map<string, HostConnectionState> {
+    const out = new Map<string, HostConnectionState>()
+    for (const session of this.#sessions.values()) {
+      const state = this.#sessionStates.get(session.id)
+      if (state === 'closed' || state === undefined) continue
+      const hostId = session.host.id
+      const current = out.get(hostId)
+      if (current === 'connected') continue
+      if (state === 'connected') out.set(hostId, 'connected')
+      else if (current === undefined) out.set(hostId, 'reconnecting')
+    }
+    return out
   }
 
   // ---- internals ----
@@ -386,6 +413,8 @@ export class SessionManager {
   }
 
   #emitSessionState(sessionId: bigint, state: SessionState): void {
+    if (state === 'closed') this.#sessionStates.delete(sessionId)
+    else this.#sessionStates.set(sessionId, state)
     for (const listener of this.#sessionStateListeners) listener(sessionId, state)
   }
 

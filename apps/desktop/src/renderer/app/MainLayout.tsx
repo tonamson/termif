@@ -12,7 +12,7 @@ import { Titlebar } from '../views/Titlebar.js'
 import { Drawer } from '../views/Drawer.js'
 import { Inspector } from '../views/Inspector.js'
 import { useConnectFlow } from '../state/connectFlow.js'
-import { t } from '@termif/core'
+import { t, type HostConnectionState } from '@termif/core'
 
 export function MainLayout({ app }: { app: App }) {
   const [hostStore] = useState(() => createHostStore({ store: app.store }))
@@ -22,6 +22,9 @@ export function MainLayout({ app }: { app: App }) {
   const [editing, setEditing] = useState<{ id: string | null } | null>(null)
 
   const connect = useConnectFlow(app, hostStore)
+  const [hostStates, setHostStates] = useState<ReadonlyMap<string, HostConnectionState>>(
+    () => app.sessions.hostStates(),
+  )
   const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
@@ -35,6 +38,8 @@ export function MainLayout({ app }: { app: App }) {
     void hostStore.refresh()
     return app.store.onChange(() => void hostStore.refresh())
   }, [app.store, hostStore])
+
+  useEffect(() => app.sessions.onSessionState(() => setHostStates(new Map(app.sessions.hostStates()))), [app.sessions])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -82,7 +87,7 @@ export function MainLayout({ app }: { app: App }) {
             hosts={hostStore.visibleHosts()}
             query={hosts.query}
             collapsedGroups={prefs.collapsedGroups}
-            connectedIds={app.sessions.connectedHostIds()}
+            hostStates={hostStates}
             onQueryChange={(q) => hostStore.setQuery(q)}
             onToggleGroup={(name) =>
               app.prefs.set(

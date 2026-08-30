@@ -21,7 +21,7 @@ const host = (label: string, groupId: string | null, extra: Partial<Host> = {}):
 const props = {
   query: '',
   collapsedGroups: [] as string[],
-  connectedIds: [] as string[],
+  hostStates: new Map() as Map<string, import('@termif/core').HostConnectionState>,
   onQueryChange: vi.fn(),
   onToggleGroup: vi.fn(),
   onConnect: vi.fn(),
@@ -73,8 +73,15 @@ describe('HostList grouped', () => {
   })
 
   it('marks a connected host', () => {
-    render(<HostList {...props} hosts={[host('a', null)]} connectedIds={['a']} />)
+    render(<HostList {...props} hosts={[host('a', null)]} hostStates={new Map([['a', 'connected']])} />)
     expect(screen.getByRole('listitem')).toHaveAttribute('data-state', 'connected')
+  })
+
+  it('marks a reconnecting host and defaults absent to closed', () => {
+    const { rerender } = render(<HostList {...props} hosts={[host('a', null)]} hostStates={new Map([['a', 'reconnecting']])} />)
+    expect(screen.getByRole('listitem')).toHaveAttribute('data-state', 'reconnecting')
+    rerender(<HostList {...props} hosts={[host('a', null)]} hostStates={new Map()} />)
+    expect(screen.getByRole('listitem')).toHaveAttribute('data-state', 'closed')
   })
 
   it('toggles a group when its heading is clicked', async () => {

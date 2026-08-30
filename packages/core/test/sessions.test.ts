@@ -336,3 +336,73 @@ describe('SessionManager', () => {
     expect(manager.drainLoopCount).toBe(0)
   })
 })
+
+describe('SessionManager.openSessionIds', () => {
+  it('lists sessions that are open right now, so a panel mounted later can find one', async () => {
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh)
+    await manager.start()
+
+    expect(manager.openSessionIds()).toEqual([])
+
+    const sessionId = await manager.connect(host, { password: 'pw' })
+    expect(manager.openSessionIds()).toEqual([sessionId])
+
+    await manager.disconnect(sessionId)
+    expect(manager.openSessionIds()).toEqual([])
+  })
+})
+
+describe('SessionManager.hostStates', () => {
+  it('maps a host with one connected session to connected', async () => {
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh)
+    await manager.start()
+    await manager.connect(host, { password: 'pw' })
+    expect(manager.hostStates().get('h1')).toBe('connected')
+  })
+
+  it('is absent for a host with no sessions', async () => {
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh)
+    await manager.start()
+    expect(manager.hostStates().has('h1')).toBe(false)
+    const sid = await manager.connect(host, { password: 'pw' })
+    await manager.disconnect(sid)
+    expect(manager.hostStates().has('h1')).toBe(false)
+  })
+
+  it('maps a host whose only session is reconnecting to reconnecting', async () => {
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh, { delaysMs: [5, 5] })
+    await manager.start()
+    const sid = await manager.connect(host, { password: 'pw' })
+    ssh.failConnectsRemaining = 1
+    ssh.pushEvent({ kind: 'sessionClosed', sessionId: sid, reason: 'network changed' })
+    await eventually(() => manager.hostStates().get('h1') === 'reconnecting')
+    expect(manager.hostStates().get('h1')).toBe('reconnecting')
+  })
+
+  it('prefers connected over reconnecting independent of insertion order', async () => {
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh, { delaysMs: [5, 5] })
+    await manager.start()
+    const sid1 = await manager.connect(host, { password: 'pw' })
+    ssh.failConnectsRemaining = 99
+    ssh.pushEvent({ kind: 'sessionClosed', sessionId: sid1, reason: 'network changed' })
+    await eventually(() => manager.hostStates().get('h1') === 'reconnecting')
+    ssh.failConnectsRemaining = 0
+    await manager.connect(host, { password: 'pw' })
+    expect(manager.hostStates().get('h1')).toBe('connected')
+  })
+
+  it('removes the host after disconnecting its last session', async () => {
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh)
+    await manager.start()
+    const sid = await manager.connect(host, { password: 'pw' })
+    expect(manager.hostStates().has('h1')).toBe(true)
+    await manager.disconnect(sid)
+    expect(manager.hostStates().has('h1')).toBe(false)
+  })
+})
