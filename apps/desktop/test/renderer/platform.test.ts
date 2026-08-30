@@ -52,21 +52,6 @@ function stubApi(overrides: Partial<{ [K in keyof TermifApi]: Partial<TermifApi[
       transaction: record('transaction'),
       ...overrides.db,
     },
-    secure: {
-      get: record('get', null),
-      set: record('set'),
-      delete: record('delete'),
-      ...overrides.secure,
-    },
-    net: { request: record('request', { status: 200, body: '{}' }), ...overrides.net },
-    auth: {
-      startDeviceFlow: record('startDeviceFlow'),
-      pollDeviceFlow: record('pollDeviceFlow'),
-      accessToken: record('accessToken', 'token'),
-      hasSession: record('hasSession', false),
-      signOut: record('signOut'),
-      ...overrides.auth,
-    },
     app: {
       pickFile: record('pickFile', null),
       pickSaveLocation: record('pickSaveLocation', null),

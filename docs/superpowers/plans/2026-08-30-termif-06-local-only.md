@@ -203,28 +203,28 @@ Before the vault, because `sheet/rows.ts` and `sheet/client.ts` both reference
 
 ### Task 6 — main process: Google, secure store, and the net bridge
 
-- [ ] Failing test in `desktop/test/main/handlers.test.ts`: `handlerNames()`
+- [x] Failing test in `desktop/test/main/handlers.test.ts`: `handlerNames()`
       contains no `auth:*`, no `secure:*`, and no `net:request` channel, and
       still matches `CHANNELS` exactly. That equality assertion is the one that
       catches a channel removed from one list but not the other.
-- [ ] Delete `main/googleAuth.ts`, `main/secureStore.ts`, `main/net.ts`, and
+- [x] Delete `main/googleAuth.ts`, `main/secureStore.ts`, `main/net.ts`, and
       `test/main/googleAuth.test.ts`.
-- [ ] In `shared/ipc.ts`: remove the five `auth*` channels, the three `secure*`
+- [x] In `shared/ipc.ts`: remove the five `auth*` channels, the three `secure*`
       channels, `netRequest`, and the `DeviceFlowStart`, `DeviceFlowPoll`,
       `HttpRequestPayload`, `HttpResponsePayload` types plus the `auth`,
       `secure`, and `net` members of `TermifApi`.
-- [ ] In `main/handlers.ts`: remove the nine handlers and the `secureStore` and
+- [x] In `main/handlers.ts`: remove the nine handlers and the `secureStore` and
       `auth` fields of `HandlerDeps`.
-- [ ] In `main/index.ts`: remove the `GoogleAuth` construction, the
+- [x] In `main/index.ts`: remove the `GoogleAuth` construction, the
       `createSecureStore` call, and both `TERMIF_GOOGLE_*` env reads.
-- [ ] In `preload/index.ts`: remove the matching bridge members.
-- [ ] In `core/src/platform.ts`: remove `net: HttpClient` and
+- [x] In `preload/index.ts`: remove the matching bridge members.
+- [x] In `core/src/platform.ts`: remove `net: HttpClient` and
       `secureStore: SecureStore` from `Platform`, and the `HttpClient` and
       `SecureStore` types if nothing else uses them.
-- [ ] In `renderer/platform.ts`: remove the `net` and `secureStore` adapters;
+- [x] In `renderer/platform.ts`: remove the `net` and `secureStore` adapters;
       update `test/renderer/platform.test.ts` and the `fakePlatform` helper.
-- [ ] `npm run typecheck` in `apps/desktop` clean.
-- [ ] `git commit -m "refactor(desktop): remove Google auth, the secure store, and the net bridge"`
+- [x] `npm run typecheck` in `apps/desktop` clean.
+- [x] `git commit -m "refactor(desktop): remove Google auth, the secure store, and the net bridge"`
 
 ### Task 7 — renderer boot
 

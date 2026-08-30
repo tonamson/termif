@@ -7,8 +7,6 @@ import type { Platform, SqlValue } from '@termif/core'
  * core code paths the app does, not a mock of them.
  */
 export async function fakePlatform(): Promise<Platform> {
-  const items = new Map<string, Uint8Array>()
-
   const SQL = await initSqlJs()
   const db = new SQL.Database()
 
@@ -48,11 +46,6 @@ export async function fakePlatform(): Promise<Platform> {
         return []
       },
     },
-    secureStore: {
-      get: async (key) => items.get(key) ?? null,
-      set: async (key, value) => void items.set(key, new Uint8Array(value)),
-      delete: async (key) => void items.delete(key),
-    },
     db: {
       exec: async (sql: string, params: readonly SqlValue[] = []) => {
         const stmt = db.prepare(sql)
@@ -78,9 +71,6 @@ export async function fakePlatform(): Promise<Platform> {
           throw e
         }
       },
-    },
-    net: {
-      request: async () => ({ status: 200, body: '{}' }),
     },
     now: () => new Date().toISOString(),
     randomBytes: (n) => {

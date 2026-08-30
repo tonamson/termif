@@ -1,21 +1,11 @@
 import { dialog, ipcMain, shell } from 'electron'
 import type { SqlValue } from '@termif/core'
-import {
-  CHANNELS,
-  type DbStatement,
-  type HttpRequestPayload,
-  type SerialisedDirEntry,
-} from '../shared/ipc.js'
+import { CHANNELS, type DbStatement, type SerialisedDirEntry } from '../shared/ipc.js'
 import type { DesktopDb } from './db.js'
-import type { GoogleAuth } from './googleAuth.js'
-import type { MainSecureStore } from './secureStore.js'
 import { initNative, native, serialiseDirEntry, serialiseEvents } from './native.js'
-import { request } from './net.js'
 
 export interface HandlerDeps {
   db: DesktopDb
-  secureStore: MainSecureStore
-  auth: GoogleAuth
 }
 
 /**
@@ -51,15 +41,6 @@ export function handlerNames(): string[] {
     CHANNELS.dbExec,
     CHANNELS.dbQuery,
     CHANNELS.dbTransaction,
-    CHANNELS.secureGet,
-    CHANNELS.secureSet,
-    CHANNELS.secureDelete,
-    CHANNELS.netRequest,
-    CHANNELS.authStartDeviceFlow,
-    CHANNELS.authPollDeviceFlow,
-    CHANNELS.authAccessToken,
-    CHANNELS.authHasSession,
-    CHANNELS.authSignOut,
     CHANNELS.appPickFile,
     CHANNELS.appPickSaveLocation,
     CHANNELS.appOpenExternal,
@@ -185,32 +166,6 @@ export function registerHandlers(deps: HandlerDeps): void {
   )
   ipcMain.handle(CHANNELS.dbTransaction, async (_e, statements: DbStatement[]) => {
     await deps.db.transaction(statements)
-  })
-
-  // ---- secure ----
-  ipcMain.handle(CHANNELS.secureGet, async (_e, key: string) => deps.secureStore.get(key))
-  ipcMain.handle(
-    CHANNELS.secureSet,
-    async (_e, key: string, value: Uint8Array, requireBiometrics: boolean) => {
-      await deps.secureStore.set(key, value, requireBiometrics)
-    },
-  )
-  ipcMain.handle(CHANNELS.secureDelete, async (_e, key: string) => {
-    await deps.secureStore.delete(key)
-  })
-
-  // ---- net ----
-  ipcMain.handle(CHANNELS.netRequest, async (_e, payload: HttpRequestPayload) => request(payload))
-
-  // ---- auth ----
-  ipcMain.handle(CHANNELS.authStartDeviceFlow, async () => deps.auth.startDeviceFlow())
-  ipcMain.handle(CHANNELS.authPollDeviceFlow, async (_e, deviceCode: string) =>
-    deps.auth.pollDeviceFlow(deviceCode),
-  )
-  ipcMain.handle(CHANNELS.authAccessToken, async () => deps.auth.accessToken())
-  ipcMain.handle(CHANNELS.authHasSession, async () => deps.auth.hasSession())
-  ipcMain.handle(CHANNELS.authSignOut, async () => {
-    await deps.auth.signOut()
   })
 
   // ---- app ----

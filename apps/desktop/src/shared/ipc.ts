@@ -33,18 +33,6 @@ export const CHANNELS = Object.freeze({
   dbQuery: 'termif:db:query',
   dbTransaction: 'termif:db:transaction',
 
-  secureGet: 'termif:secure:get',
-  secureSet: 'termif:secure:set',
-  secureDelete: 'termif:secure:delete',
-
-  netRequest: 'termif:net:request',
-
-  authStartDeviceFlow: 'termif:auth:startDeviceFlow',
-  authPollDeviceFlow: 'termif:auth:pollDeviceFlow',
-  authAccessToken: 'termif:auth:accessToken',
-  authHasSession: 'termif:auth:hasSession',
-  authSignOut: 'termif:auth:signOut',
-
   appPickFile: 'termif:app:pickFile',
   appPickSaveLocation: 'termif:app:pickSaveLocation',
   appOpenExternal: 'termif:app:openExternal',
@@ -58,33 +46,6 @@ export interface DbStatement {
   sql: string
   params: SqlValue[]
 }
-
-export interface HttpRequestPayload {
-  method: 'GET' | 'POST' | 'PUT'
-  url: string
-  headers?: Record<string, string>
-  body?: string
-}
-
-export interface HttpResponsePayload {
-  status: number
-  body: string
-}
-
-export interface DeviceFlowStart {
-  userCode: string
-  verificationUrl: string
-  /** Opaque; hand it back to `authPollDeviceFlow`. */
-  deviceCode: string
-  intervalSecs: number
-  expiresInSecs: number
-}
-
-export type DeviceFlowPoll =
-  | { state: 'pending' }
-  | { state: 'authorized' }
-  | { state: 'denied'; reason: string }
-  | { state: 'expired' }
 
 /**
  * What the preload puts on `window.termif`. The renderer's `Platform` is built
@@ -131,21 +92,6 @@ export interface TermifApi {
     exec(sql: string, params: SqlValue[]): Promise<void>
     query(sql: string, params: SqlValue[]): Promise<Record<string, SqlValue>[]>
     transaction(statements: DbStatement[]): Promise<void>
-  }
-  secure: {
-    get(key: string): Promise<Uint8Array | null>
-    set(key: string, value: Uint8Array, requireBiometrics: boolean): Promise<void>
-    delete(key: string): Promise<void>
-  }
-  net: {
-    request(payload: HttpRequestPayload): Promise<HttpResponsePayload>
-  }
-  auth: {
-    startDeviceFlow(): Promise<DeviceFlowStart>
-    pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll>
-    accessToken(): Promise<string>
-    hasSession(): Promise<boolean>
-    signOut(): Promise<void>
   }
   app: {
     pickFile(): Promise<string | null>

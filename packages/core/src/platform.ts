@@ -5,23 +5,10 @@
  */
 export interface Platform {
   readonly ssh: SshBridge
-  readonly secureStore: SecureStore
   readonly db: LocalDb
-  readonly net: HttpClient
   /** ISO-8601 UTC. Injected so tests can control time. */
   now(): string
   randomBytes(length: number): Uint8Array
-}
-
-export interface SecureStore {
-  /** Reads a value, or null when absent. */
-  get(key: string): Promise<Uint8Array | null>
-  /**
-   * Writes a value. `requireBiometrics` asks the OS to gate reads behind
-   * Face ID / Touch ID / fingerprint where the platform supports it.
-   */
-  set(key: string, value: Uint8Array, requireBiometrics: boolean): Promise<void>
-  delete(key: string): Promise<void>
 }
 
 export interface LocalDb {
@@ -34,20 +21,6 @@ export interface LocalDb {
 }
 
 export type SqlValue = string | number | null
-
-export interface HttpResponse {
-  readonly status: number
-  readonly body: string
-}
-
-export interface HttpClient {
-  request(init: {
-    method: 'GET' | 'POST' | 'PUT'
-    url: string
-    headers?: Readonly<Record<string, string>>
-    body?: string
-  }): Promise<HttpResponse>
-}
 
 export interface SshConnectConfig {
   host: string

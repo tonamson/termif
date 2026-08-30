@@ -1,10 +1,5 @@
 import type { Platform, SqlValue, SshDirEntry, SshEvent } from '@termif/core'
-import type {
-  DbStatement,
-  SerialisedDirEntry,
-  SerialisedSshEvent,
-  TermifApi,
-} from '../shared/ipc.js'
+import type { DbStatement, SerialisedDirEntry, SerialisedSshEvent, TermifApi } from '../shared/ipc.js'
 
 export function deserialiseDirEntry(entry: SerialisedDirEntry): SshDirEntry {
   return { ...entry, size: BigInt(entry.size) }
@@ -121,12 +116,6 @@ export function createPlatform(api: TermifApi): Platform {
         (await api.ssh.nextEvents(timeoutMs)).map(deserialiseEvent),
     },
 
-    secureStore: {
-      get: (key) => api.secure.get(key),
-      set: (key, value, requireBiometrics) => api.secure.set(key, value, requireBiometrics),
-      delete: (key) => api.secure.delete(key),
-    },
-
     db: {
       async exec(sql: string, params: readonly SqlValue[] = []): Promise<void> {
         if (batch !== null) {
@@ -160,16 +149,6 @@ export function createPlatform(api: TermifApi): Platform {
           throw e
         }
       },
-    },
-
-    net: {
-      request: async (init) =>
-        api.net.request({
-          method: init.method,
-          url: init.url,
-          ...(init.headers === undefined ? {} : { headers: { ...init.headers } }),
-          ...(init.body === undefined ? {} : { body: init.body }),
-        }),
     },
 
     now: () => new Date().toISOString(),

@@ -42,22 +42,6 @@ const api: TermifApi = {
     query: (sql, params) => ipcRenderer.invoke(CHANNELS.dbQuery, sql, params),
     transaction: (statements) => ipcRenderer.invoke(CHANNELS.dbTransaction, statements),
   },
-  secure: {
-    get: (key) => ipcRenderer.invoke(CHANNELS.secureGet, key),
-    set: (key, value, requireBiometrics) =>
-      ipcRenderer.invoke(CHANNELS.secureSet, key, value, requireBiometrics),
-    delete: (key) => ipcRenderer.invoke(CHANNELS.secureDelete, key),
-  },
-  net: {
-    request: (payload) => ipcRenderer.invoke(CHANNELS.netRequest, payload),
-  },
-  auth: {
-    startDeviceFlow: () => ipcRenderer.invoke(CHANNELS.authStartDeviceFlow),
-    pollDeviceFlow: (deviceCode) => ipcRenderer.invoke(CHANNELS.authPollDeviceFlow, deviceCode),
-    accessToken: () => ipcRenderer.invoke(CHANNELS.authAccessToken),
-    hasSession: () => ipcRenderer.invoke(CHANNELS.authHasSession),
-    signOut: () => ipcRenderer.invoke(CHANNELS.authSignOut),
-  },
   app: {
     pickFile: () => ipcRenderer.invoke(CHANNELS.appPickFile),
     pickSaveLocation: (name) => ipcRenderer.invoke(CHANNELS.appPickSaveLocation, name),
