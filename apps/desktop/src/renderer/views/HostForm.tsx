@@ -138,7 +138,7 @@ export function HostForm({ host, onSave, onCancel }: HostFormProps) {
       {error !== null && <p role="alert">{error}</p>}
 
       <div className="host-form__actions">
-        <button type="submit">{t('form.save')}</button>
+        <button type="submit" data-variant="primary">{t('form.save')}</button>
         <button type="button" onClick={onCancel}>
           {t('form.cancel')}
         </button>

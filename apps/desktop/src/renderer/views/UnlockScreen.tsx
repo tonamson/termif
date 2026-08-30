@@ -54,7 +54,7 @@ export function UnlockScreen({ error, onUnlock, onDeviceUnlock }: UnlockScreenPr
 
         {error !== null && <p role="alert">{error}</p>}
 
-        <button type="submit" disabled={busy}>
+        <button type="submit" data-variant="primary" disabled={busy}>
           {t('vault.unlock.submit')}
         </button>
       </form>

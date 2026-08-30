@@ -102,6 +102,7 @@ export function HostList({
                   <>
                     <button
                       type="button"
+                      data-variant="danger"
                       onClick={() => {
                         setConfirming(null)
                         onDelete(host.id)

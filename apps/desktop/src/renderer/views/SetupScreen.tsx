@@ -61,7 +61,7 @@ export function SetupScreen({ onSetup }: SetupScreenProps) {
           {t('vault.remember')}
         </label>
 
-        <button type="submit" disabled={!canSubmit}>
+        <button type="submit" data-variant="primary" disabled={!canSubmit}>
           {t('vault.setup.create')}
         </button>
       </form>

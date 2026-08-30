@@ -165,3 +165,326 @@
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--border);
 }
+
+/* --- Terminals ---------------------------------------------------------- */
+.terminal-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.terminal-tabs__bar {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.terminal-tabs__tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--bg-surface);
+}
+.terminal-tabs__tab:has(button[aria-selected='true']) {
+  border-color: var(--border);
+  background: var(--bg-raised);
+}
+.terminal-tabs__tab button[role='tab'] {
+  max-width: 20ch;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* A state dot before the title. The textual ' …' the component already
+   appends stays, so screen readers lose nothing to this. */
+.terminal-tabs__tab::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-inline-start: var(--space-2);
+  border-radius: 50%;
+  background: var(--fg-subtle);
+  flex: 0 0 auto;
+}
+.terminal-tabs__tab--live::before {
+  background: var(--ok);
+}
+.terminal-tabs__tab--reconnecting::before {
+  background: var(--warn);
+  animation: termif-pulse 1.2s ease-in-out infinite;
+}
+.terminal-tabs__tab--closed {
+  opacity: 0.5;
+}
+
+.terminal-tabs__notice {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.terminal-tabs__panes {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.terminal-tabs__empty {
+  margin: auto;
+  max-width: 32ch;
+  padding: var(--space-6);
+  color: var(--fg-subtle);
+  text-align: center;
+}
+
+.terminal-pane {
+  position: absolute;
+  inset: 0;
+  padding: var(--space-2);
+}
+
+/* --- Sync badge --------------------------------------------------------- */
+.sync-badge {
+  width: 100%;
+  justify-content: flex-start;
+  font-size: 12px;
+}
+.sync-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-subtle);
+  flex: 0 0 auto;
+}
+.sync-badge--running::before {
+  background: var(--accent);
+  animation: termif-pulse 1.2s ease-in-out infinite;
+}
+.sync-badge--failed::before {
+  background: var(--danger);
+}
+.sync-badge--idle::before {
+  background: var(--ok);
+}
+
+/* --- Overlays ----------------------------------------------------------- */
+/* These three are bare markup in the page flow today. */
+.hostkey,
+.snippet-palette,
+.sign-in {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: rgb(0 0 0 / 0.55);
+}
+.hostkey > *,
+.snippet-palette > *,
+.sign-in > * {
+  width: 100%;
+  max-width: 520px;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+
+/* A mismatch is a possible attack; an unknown key is routine. They must not
+   look alike. */
+.hostkey--unknown > * {
+  border-color: var(--warn);
+}
+.hostkey--mismatch > * {
+  border-color: var(--danger);
+  border-width: 2px;
+}
+
+.hostkey__actions,
+.host-form__actions,
+.sign-in__actions,
+.forwards__form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  margin-top: var(--space-4);
+}
+
+.snippet-palette__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.snippet__label {
+  color: var(--fg);
+}
+.snippet__body {
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* --- Host form, setup, unlock ------------------------------------------- */
+.host-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 520px;
+  padding: var(--space-5);
+}
+
+.setup,
+.unlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 380px;
+  margin: auto;
+  padding: var(--space-6);
+}
+
+/* --- SFTP --------------------------------------------------------------- */
+.sftp {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.sftp__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.sftp__path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp__entries {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+.sftp__entries li {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--motion-fast);
+}
+.sftp__entries li:hover {
+  background: var(--bg-raised);
+}
+.sftp__icon {
+  color: var(--fg-subtle);
+  text-align: center;
+}
+.sftp__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sftp__size {
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Transfers ---------------------------------------------------------- */
+.transfer-list {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2);
+  max-height: 30%;
+  overflow-y: auto;
+}
+.transfer-list li {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+}
+.transfer__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.transfer__error {
+  grid-column: 1 / -1;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* --- Forwards ----------------------------------------------------------- */
+.forwards {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-4);
+  gap: var(--space-4);
+}
+.forwards__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.forwards__list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--motion-fast);
+}
+.forwards__list li:hover {
+  background: var(--bg-raised);
+}
+.forward__port {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.forward__description {
+  color: var(--fg-muted);
+}
+.forward__accepted {
+  color: var(--fg-subtle);
+  font-variant-numeric: tabular-nums;
+}
+.forward__note {
+  color: var(--warn);
+  font-size: 12px;
+}
