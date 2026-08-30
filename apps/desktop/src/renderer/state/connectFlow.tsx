@@ -116,7 +116,8 @@ export function useConnectFlow(app: App, hostStore: HostStore): ConnectFlow {
       }
 
       const sessionId = await app.sessions.connect(host, credential)
-      await app.sessions.openTab(sessionId, 80, 24)
+      const tabId = await app.sessions.openTab(sessionId, 80, 24)
+      app.tabs.add({ id: tabId, sessionId, title: host.label })
     },
     [app],
   )

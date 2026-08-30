@@ -8,6 +8,7 @@ import {
   type Platform,
 } from '@termif/core'
 import type { TermifApi } from '../../shared/ipc.js'
+import { createTabStore, type TabStore } from './tabStore.js'
 import { createVaultStore, type VaultStore } from './vaultStore.js'
 
 export interface App {
@@ -15,6 +16,7 @@ export interface App {
   store: Store
   vaultStore: VaultStore
   sessions: SessionManager
+  tabs: TabStore
   transfers: TransferManager
   forwards: ForwardManager
   sync: SyncEngine | null
@@ -32,6 +34,7 @@ export async function bootApp(platform: Platform, api: TermifApi): Promise<App> 
   const vaultStore = createVaultStore({ platform, store })
 
   const sessions = new SessionManager({ ssh: platform.ssh, now: platform.now })
+  const tabs = createTabStore()
   const transfers = new TransferManager({ ssh: platform.ssh })
   const forwards = new ForwardManager({ ssh: platform.ssh, platformKind: 'desktop' })
 
@@ -53,6 +56,7 @@ export async function bootApp(platform: Platform, api: TermifApi): Promise<App> 
     store,
     vaultStore,
     sessions,
+    tabs,
     transfers,
     forwards,
     sync:

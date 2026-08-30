@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { t } from '@termif/core'
 import type { App } from '../state/boot.js'
-import { createTabStore } from '../state/tabStore.js'
 import { useStore } from '../state/useStore.js'
 import { TerminalPane } from './TerminalPane.js'
 import { SnippetPalette } from './SnippetPalette.js'
 
 export function TerminalTabs({ app }: { app: App }) {
-  const [tabStore] = useState(() => createTabStore())
+  const tabStore = app.tabs
   const { tabs, activeId } = useStore(tabStore)
   const [paletteOpen, setPaletteOpen] = useState(false)
 
