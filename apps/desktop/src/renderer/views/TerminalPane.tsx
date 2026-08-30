@@ -73,6 +73,10 @@ export function TerminalPane({ tabId, sessions, active }: TerminalPaneProps) {
     let timer: ReturnType<typeof setTimeout> | null = null
 
     const refit = (): void => {
+      const box = element.getBoundingClientRect()
+      // A hidden panel reports 0×0; fitting then would collapse the terminal
+      // to zero rows. The ResizeObserver fires again when the panel returns.
+      if (box.width === 0 || box.height === 0) return
       try {
         fitAddon.fit()
       } catch {

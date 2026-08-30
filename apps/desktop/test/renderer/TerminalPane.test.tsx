@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { TerminalPane } from '../../src/renderer/views/TerminalPane.js'
 import { palette } from '../../src/renderer/styles/palette.js'
+import { FitAddon } from '@xterm/addon-fit'
 
 /**
  * xterm.js needs a real canvas and layout, which jsdom does not provide, so the
@@ -44,8 +45,13 @@ vi.mock('@xterm/xterm', () => ({
 
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: class {
+    static instances: { fit: ReturnType<typeof vi.fn> }[] = []
     fit = vi.fn()
     dispose = vi.fn()
+    constructor() {
+      // @ts-ignore - static on mock class
+      ;(this.constructor as typeof FitAddon).instances.push(this as never)
+    }
   },
 }))
 
@@ -140,6 +146,37 @@ describe('TerminalPane', () => {
     rerender(<TerminalPane tabId="t1" sessions={sessions as never} active={false} />)
 
     expect(sessions.subscribeTab).toHaveBeenCalledTimes(1)
+  })
+
+  async function fireObserver(): Promise<void> {
+    const stub = (globalThis as unknown as { ResizeObserverStub: { instances: { fire(): void }[] } })
+      .ResizeObserverStub.instances.at(-1)!
+    stub.fire()
+  }
+
+  it('does not fit while the container measures 0x0 (hidden panel)', async () => {
+    const sessions = makeSessions()
+    render(<TerminalPane tabId="t1" sessions={sessions as never} active />)
+    vi.spyOn(document.querySelector('.terminal-pane')!, 'getBoundingClientRect')
+      .mockReturnValue({ width: 0, height: 0 } as DOMRect)
+    ;(FitAddon as unknown as { instances: { fit: ReturnType<typeof vi.fn> }[] }).instances.at(-1)!.fit.mockClear()
+
+    await fireObserver()
+    // The refit throttle is 100ms; give it room to have fired if it were going to.
+    await new Promise((resolve) => setTimeout(resolve, 250))
+
+    expect((FitAddon as unknown as { instances: { fit: ReturnType<typeof vi.fn> }[] }).instances.at(-1)!.fit).not.toHaveBeenCalled()
+  })
+
+  it('still fits at a real size', async () => {
+    const sessions = makeSessions()
+    render(<TerminalPane tabId="t1" sessions={sessions as never} active />)
+    vi.spyOn(document.querySelector('.terminal-pane')!, 'getBoundingClientRect')
+      .mockReturnValue({ width: 800, height: 600 } as DOMRect)
+    ;(FitAddon as unknown as { instances: { fit: ReturnType<typeof vi.fn> }[] }).instances.at(-1)!.fit.mockClear()
+
+    await fireObserver()
+    await waitFor(() => expect((FitAddon as unknown as { instances: { fit: ReturnType<typeof vi.fn> }[] }).instances.at(-1)!.fit).toHaveBeenCalled())
   })
 
   it('opens the terminal with the app theme so it matches the window ground', async () => {
