@@ -197,6 +197,7 @@ export class SessionManager {
     const record = this.#requireTab(tab)
     const channelId = record.channelId
     this.#forgetTab(tab)
+    for (const listener of this.#tabClosedListeners) listener(tab, null)
     if (channelId !== null) {
       try {
         await this.#ssh.closeChannel(channelId)
