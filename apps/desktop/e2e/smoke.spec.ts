@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 /**
- * Local-only smoke: no vault, no Google. The single portable file is
+ * Local-only smoke: no encryption, no sync. The single portable file is
  * termif.sqlite — add a host, restart, copy the file to a fresh directory,
  * and it appears without any prompt (spec §3, plan 6 task 11).
  */
@@ -31,10 +31,8 @@ test('adds a host and keeps it across a restart', async () => {
     const app = await launch(userData)
     const window = await app.firstWindow()
 
-    // No vault prompt — empty database boots straight to the host list.
+    // Empty database boots straight to the host list.
     await expect(window.getByText(/No hosts yet/i)).toBeVisible()
-    await expect(window.getByRole('heading', { name: /choose a master password/i })).toBeHidden()
-    await expect(window.getByRole('heading', { name: /vault locked/i })).toBeHidden()
 
     await window.getByRole('button', { name: /Add host/i }).click()
     await window.locator('#host-label').fill('e2e-host')
@@ -48,9 +46,7 @@ test('adds a host and keeps it across a restart', async () => {
     const restarted = await launch(userData)
     const restartedWindow = await restarted.firstWindow()
 
-    // No unlock prompt on restart — same file, same hosts.
-    await expect(restartedWindow.getByRole('heading', { name: /choose a master password/i })).toBeHidden()
-    await expect(restartedWindow.getByRole('heading', { name: /vault locked/i })).toBeHidden()
+    // Same file, same hosts — no prompt on restart.
     await expect(restartedWindow.getByText('e2e-host')).toBeVisible()
 
     await restarted.close()
@@ -85,8 +81,6 @@ test('copying termif.sqlite makes the host appear on a fresh user-data dir witho
     const appB = await launch(userDataB)
     const windowB = await appB.firstWindow()
 
-    await expect(windowB.getByRole('heading', { name: /choose a master password/i })).toBeHidden()
-    await expect(windowB.getByRole('heading', { name: /vault locked/i })).toBeHidden()
     await expect(windowB.getByText('portable-host')).toBeVisible()
 
     await appB.close()

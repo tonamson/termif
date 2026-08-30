@@ -1,6 +1,6 @@
 # Plan 6 — Local-only: one SQLite file, no vault, no Google
 
-**Status:** not started. Written 2026-08-30.
+**Status:** complete (2026-08-30). All 12 tasks done — 290 tests green (83 core + 207 desktop), 30 IPC channels, 0 Google channels.
 **Spec:** [`specs/2026-08-30-termif-local-only-storage.md`](../specs/2026-08-30-termif-local-only-storage.md)
 — read it first. It carries the reasoning and the accepted trade; this file is
 only the order of operations.
@@ -37,6 +37,19 @@ Numbers to check the work against, not decoration.
 
 Task 0 fixes those six. Expected after this plan: roughly 2,900 lines removed, 5 fewer source files in
 core, 8 fewer test files, 2 dependencies dropped, 8 IPC channels gone.
+
+**Measured 2026-08-30 (Task 12):**
+
+    packages/core:   83 tests green (was 139), 7 test files (was 12), 10 src files (was 15)
+    apps/desktop:   207 tests green (was 227), 22 test files — baseline had 24 but 6 were failing
+    core src:      1,681 lines (was 2,573) — -892 lines, 5 fewer files as estimated
+    core tests:    1,081 lines (was ~1,900) — -~819 lines, 5 fewer test files
+    desktop src:   2,969 lines across 34 files
+    IPC channels:  30 (was 38) — -8 as estimated, 0 auth/secure/net channels remain
+    deps dropped:  2 (@noble/ciphers, @noble/hashes) — as estimated, core now only depends on zod
+    total tests:   290 green (was 366 with 6 failing) — -76 tests, the ~800 lines of vault/sync tests are gone (Risk 5)
+
+Estimate was high on lines removed (2,900 vs ~1,700 core) because desktop src stayed ~3k lines — deletions were concentrated in core.
 
 ## Reference inventory
 
@@ -320,16 +333,16 @@ The point of the whole plan, and the only task that proves it.
 
 ### Task 12 — the record
 
-- [ ] Add a reversal note to the top of §4 and §7 of the 2026-08-28 spec,
+- [x] Add a reversal note to the top of §4 and §7 of the 2026-08-28 spec,
       pointing at the new spec. Keep the bodies.
-- [ ] `docs/superpowers/README.md`: mark Plan 6 complete with the real test
+- [x] `docs/superpowers/README.md`: mark Plan 6 complete with the real test
       counts, not the estimates in this file.
-- [ ] `grep -rin "vault\|spreadsheet\|oauth\|argon2\|noble" packages apps docs
+- [x] `grep -rin "vault\|spreadsheet\|oauth\|argon2\|noble" packages apps docs
       --exclude-dir=node_modules` returns only deliberate historical mentions.
-      Anything else is a leftover.
-- [ ] Re-measure: line count, test count, IPC channel count. Record them here
-      next to the estimates so the next plan's estimates are better calibrated.
-- [ ] `git commit -m "docs: record the local-only decision"`
+      Anything else is a leftover. — remaining hits are: `store.ts:STALE_META_KEYS` (migration), `i18n.test.ts` half-removal check, `hostStore/connectFlow` half-removal checks, and the preserved bodies in `specs/2026-08-28` §§4,7 + historical plan docs — no source leftover.
+- [x] Re-measure: line count, test count, IPC channel count. Record them here
+      next to the estimates so the next plan's estimates are better calibrated. — see Baseline measured block above.
+- [x] `git commit -m "docs: record the local-only decision"`
 
 ---
 

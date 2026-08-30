@@ -19,12 +19,8 @@ test('captures the main screens', async () => {
   })
   const window = await app.firstWindow()
 
-  await window.getByRole('heading', { name: /choose a master password/i }).waitFor()
-  await window.screenshot({ path: join(shots, '01-setup.png') })
-
-  await window.getByLabel(/enter your master password/i).fill('screenshot-password')
-  await window.getByLabel('Confirm').fill('screenshot-password')
-  await window.getByRole('button', { name: /create vault/i }).click()
+  await window.getByText(/No hosts yet/i).waitFor()
+  await window.screenshot({ path: join(shots, '01-empty.png') })
 
   await window.getByRole('searchbox').waitFor()
   await window.screenshot({ path: join(shots, '02-empty-sidebar.png') })

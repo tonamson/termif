@@ -102,6 +102,8 @@ event stream — which is what makes a single logic core possible.
 
 ## 4. Data model and Google Sheet sync
 
+> **Reversal, 2026-08-30.** Superseded by [`2026-08-30-termif-local-only-storage.md`](2026-08-30-termif-local-only-storage.md) — no master password, no Argon2id vault, no Google Sheets sync; one portable `termif.sqlite` file holds everything. The section below is kept as the record of what was replaced, not as instructions.
+
 The Sheet is a sync medium, not a runtime database. Each device keeps a local
 SQLite copy and reads from it; the Sheet is where devices meet.
 
@@ -312,6 +314,8 @@ Retrofitting i18n means touching every view, which is why the wrapper goes in
 now even though there is one locale and one shell to serve.
 
 ## 7. Error handling
+
+> **Reversal, 2026-08-30.** The sync row (`Sync | Sheets 429 / quota`) is removed with the Google sync it described. See [`2026-08-30-termif-local-only-storage.md`](2026-08-30-termif-local-only-storage.md) §7 — `termif.sqlite` is the whole configuration and the app stays offline-first. Remaining rows below still apply.
 
 | Class | Examples | Behaviour |
 |---|---|---|
