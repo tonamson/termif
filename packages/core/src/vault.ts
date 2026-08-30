@@ -2,8 +2,18 @@ import { xchacha20poly1305 } from '@noble/ciphers/chacha.js'
 import { argon2id } from '@noble/hashes/argon2.js'
 
 import { CoreError } from './errors.js'
-import { DEFAULT_KDF_PARAMS, type KdfParams, type VaultMeta, SCHEMA_VERSION } from './model.js'
+import { SCHEMA_VERSION } from './model.js'
 import type { Platform, SecureStore } from './platform.js'
+
+// ponytail: kept locally until Task 5 deletes the vault — model no longer exports vault types
+export const DEFAULT_KDF_PARAMS = { m: 65536, t: 3, p: 1 } as const
+export type KdfParams = { m: number; t: number; p: number }
+export type VaultMeta = {
+  schemaVersion: number
+  kdfSalt: string
+  kdfParams: KdfParams
+  vaultCheck: string
+}
 
 /** Encrypting this constant gives us something to test a password against. */
 export const VAULT_CHECK_PLAINTEXT = 'termif-vault-v1'

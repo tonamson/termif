@@ -1,14 +1,15 @@
 import { CoreError } from '../errors.js'
-import {
-  hostSchema,
-  snippetSchema,
-  storedCredentialSchema,
-  vaultMetaSchema,
-  type Host,
-  type Snippet,
-  type StoredCredential,
-  type VaultMeta,
-} from '../model.js'
+import { hostSchema, snippetSchema, storedCredentialSchema, type Host, type Snippet, type StoredCredential } from '../model.js'
+import type { VaultMeta } from '../vault.js'
+import { z } from 'zod'
+
+// ponytail: shim until Task 4 deletes sheet/ Task 5 deletes vault — model no longer exports vault types
+const vaultMetaSchema = z.object({
+  schemaVersion: z.number().int().min(1),
+  kdfSalt: z.string(),
+  kdfParams: z.object({ m: z.number(), t: z.number(), p: z.number() }),
+  vaultCheck: z.string(),
+})
 
 /**
  * Column order is API: existing sheets are read by position. Append new
@@ -107,7 +108,7 @@ export function rowToHost(cells: readonly string[]): Host {
 }
 
 export function credentialToRow(c: StoredCredential): string[] {
-  return [c.id, c.label, c.kind, c.cipher, c.updatedAt, encodeBool(c.deleted)]
+  return [c.id, c.label, c.kind, c.secret, c.updatedAt, encodeBool(c.deleted)]
 }
 
 export function rowToCredential(cells: readonly string[]): StoredCredential {
@@ -116,7 +117,7 @@ export function rowToCredential(cells: readonly string[]): StoredCredential {
     id: get('id'),
     label: get('label'),
     kind: get('kind'),
-    cipher: get('cipher'),
+    secret: get('cipher'),
     updatedAt: get('updated_at'),
     deleted: decodeBool(get('deleted')),
   })

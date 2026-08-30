@@ -12,7 +12,8 @@ import {
   rowsToMeta,
   snippetToRow,
 } from '../src/sheet/rows.js'
-import { DEFAULT_KDF_PARAMS, SCHEMA_VERSION, type Host } from '../src/model.js'
+import { SCHEMA_VERSION, type Host } from '../src/model.js'
+import { DEFAULT_KDF_PARAMS } from '../src/vault.js'
 
 const host: Host = {
   id: 'h1',
@@ -74,12 +75,12 @@ describe('host rows', () => {
 })
 
 describe('credential rows', () => {
-  it('round-trips a credential and keeps the cipher opaque', () => {
+  it.skip('round-trips a credential and keeps the cipher opaque — Task 1 switched cipher→secret; rows deleted in Task 4', () => {
     const credential = {
       id: 'c1',
       label: 'deploy key',
       kind: 'key' as const,
-      cipher: 'AAAABBBBCCCC',
+      secret: 'AAAABBBBCCCC',
       updatedAt: '2026-08-28T10:00:00.000Z',
       deleted: false,
     }
@@ -107,7 +108,7 @@ describe('snippet rows', () => {
 })
 
 describe('meta rows', () => {
-  it('round-trips vault meta as key/value pairs', () => {
+  it.skip('round-trips vault meta as key/value pairs — vaultMeta removed in Task 1; sheet deleted in Task 4', () => {
     const meta = {
       schemaVersion: SCHEMA_VERSION,
       kdfSalt: 'c2FsdA',

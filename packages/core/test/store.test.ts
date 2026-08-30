@@ -122,7 +122,7 @@ describe('Store', () => {
     const cred = await store.upsertCredential({
       label: 'deploy key',
       kind: 'key',
-      cipher: 'AAAABBBB',
+      secret: 'AAAABBBB',
     })
     const snippet = await store.upsertSnippet({
       label: 'tail nginx',

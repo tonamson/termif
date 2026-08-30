@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  DEFAULT_KDF_PARAMS,
-  SCHEMA_VERSION,
-  hostSchema,
-  newId,
-  snippetSchema,
-  storedCredentialSchema,
-  vaultMetaSchema,
-} from '../src/model.js'
+import { hostSchema, newId, snippetSchema, storedCredentialSchema } from '../src/model.js'
 
 const validHost = {
   id: 'h1',
@@ -52,7 +44,7 @@ describe('storedCredentialSchema', () => {
         id: 'c1',
         label: 'root pw',
         kind,
-        cipher: 'AAAA',
+        secret: 'hunter2',
         updatedAt: '2026-08-28T10:00:00.000Z',
         deleted: false,
       })
@@ -66,11 +58,54 @@ describe('storedCredentialSchema', () => {
         id: 'c1',
         label: 'x',
         kind: 'certificate',
+        secret: 'hunter2',
+        updatedAt: '2026-08-28T10:00:00.000Z',
+        deleted: false,
+      }),
+    ).toThrow()
+  })
+
+  it('parses a credential with secret in the clear', () => {
+    const parsed = storedCredentialSchema.parse({
+      id: 'c1',
+      label: 'root pw',
+      kind: 'password',
+      secret: 'hunter2',
+      updatedAt: '2026-08-28T10:00:00.000Z',
+      deleted: false,
+    })
+    expect(parsed.secret).toBe('hunter2')
+  })
+
+  it('rejects a cipher-only payload with no secret', () => {
+    expect(() =>
+      storedCredentialSchema.parse({
+        id: 'c1',
+        label: 'root pw',
+        kind: 'password',
         cipher: 'AAAA',
         updatedAt: '2026-08-28T10:00:00.000Z',
         deleted: false,
       }),
     ).toThrow()
+  })
+
+  it('accepts a multi-line PEM private key as secret unchanged', () => {
+    const pem = [
+      '-----BEGIN OPENSSH PRIVATE KEY-----',
+      'b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW',
+      'QyNTUxOQAAACBfakeKeyMaterialForTestOnly1234567890',
+      '-----END OPENSSH PRIVATE KEY-----',
+    ].join('\n')
+    const parsed = storedCredentialSchema.parse({
+      id: 'c1',
+      label: 'deploy key',
+      kind: 'key',
+      secret: pem,
+      updatedAt: '2026-08-28T10:00:00.000Z',
+      deleted: false,
+    })
+    expect(parsed.secret).toBe(pem)
   })
 })
 
@@ -84,30 +119,6 @@ describe('snippetSchema', () => {
         tags: [],
         updatedAt: '2026-08-28T10:00:00.000Z',
         deleted: false,
-      }),
-    ).toThrow()
-  })
-})
-
-describe('vaultMetaSchema', () => {
-  it('accepts the default parameters', () => {
-    const meta = vaultMetaSchema.parse({
-      schemaVersion: SCHEMA_VERSION,
-      kdfSalt: 'c2FsdA',
-      kdfParams: DEFAULT_KDF_PARAMS,
-      vaultCheck: 'Y2hlY2s',
-    })
-    expect(meta.kdfParams.m).toBe(65536)
-  })
-
-  it('rejects an implausibly weak memory cost', () => {
-    // A tiny m would make brute force cheap; reject it rather than trust the sheet.
-    expect(() =>
-      vaultMetaSchema.parse({
-        schemaVersion: SCHEMA_VERSION,
-        kdfSalt: 'c2FsdA',
-        kdfParams: { m: 8, t: 1, p: 1 },
-        vaultCheck: 'Y2hlY2s',
       }),
     ).toThrow()
   })

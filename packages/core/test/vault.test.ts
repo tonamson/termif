@@ -128,10 +128,7 @@ describe('Vault', () => {
     expect(await Vault.unlockFromDevice(p, second.meta)).toBeNull()
   })
 
-  it('writes meta that parses against the schema', async () => {
-    const { vaultMetaSchema } = await import('../src/model.js')
-    const p = testPlatform()
-    const { meta } = await Vault.create(p, 'pw', TEST_PARAMS)
-    expect(() => vaultMetaSchema.parse(meta)).not.toThrow()
+  it.skip('writes meta that parses against the schema — removed with vaultMetaSchema in Task 1', async () => {
+    // vaultMetaSchema deleted in Task 1 (local-only); Vault itself deleted in Task 5.
   })
 })

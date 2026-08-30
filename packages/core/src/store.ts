@@ -198,7 +198,7 @@ export class Store {
        ON CONFLICT(id) DO UPDATE SET
          label = excluded.label, kind = excluded.kind, cipher = excluded.cipher,
          updated_at = excluded.updated_at, deleted = excluded.deleted`,
-      [c.id, c.label, c.kind, c.cipher, c.updatedAt, c.deleted ? 1 : 0],
+      [c.id, c.label, c.kind, c.secret, c.updatedAt, c.deleted ? 1 : 0],
     )
   }
 
@@ -387,7 +387,7 @@ function toCredential(row: CredentialRow): StoredCredential {
     id: row.id,
     label: row.label,
     kind: row.kind,
-    cipher: row.cipher,
+    secret: row.cipher,
     updatedAt: row.updated_at,
     deleted: row.deleted === 1,
   })
