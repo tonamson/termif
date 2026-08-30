@@ -17,7 +17,8 @@ not "not written yet" — it is out of v1 scope. Three plans, not four.
 | 1 | [`plans/2026-08-28-termif-01-ssh-core.md`](plans/2026-08-28-termif-01-ssh-core.md) — Rust `ssh-core` + napi bridge | 12 | not started | 2, 3 |
 | 2 | [`plans/2026-08-28-termif-02-core-ts.md`](plans/2026-08-28-termif-02-core-ts.md) — shared TypeScript core | 12 | **complete (2026-08-30)** — all 73 steps done, 138 tests green | 3 |
 | 3 | [`plans/2026-08-28-termif-03-desktop.md`](plans/2026-08-28-termif-03-desktop.md) — Electron desktop shell | 12 | **complete (2026-08-30)** — all 92 steps done, 184 tests green, build OK | — |
-| — | React Native mobile shell | — | **deferred, out of v1 scope** (spec §11) | — |
+| 4 | React Native mobile shell | — | **deferred, out of v1 scope** (spec §11) | — |
+| 5 | [`plans/2026-08-30-termif-04-desktop-visual.md`](plans/2026-08-30-termif-04-desktop-visual.md) — desktop visual design | 7 | **complete (2026-08-30)** | — |
 
 Plan 1 goes first because it carries the largest risk — the Rust toolchain and
 the FFI boundary — and everything else stands on it. Finding out it is wrong in
@@ -56,6 +57,8 @@ Three signals, in increasing order of trustworthiness:
 None in v1's spec or plans. Google sign-in, first-run spreadsheet attach,
 `onBridgeEvent`, `fakePlatform` async, and the `SftpBrowser` hook split are
 inlined in the plans (Plan 2 Tasks 7 and 9; Plan 3 Tasks 5, 10, and 12).
+
+Light theme, theme switching, and a UX redesign are explicit non-goals per the desktop visual design spec (spec `2026-08-30-termif-desktop-visual-design.md` § non-goals) — not owed in v1.
 
 ## Deferred: the mobile phase
 
