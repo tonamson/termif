@@ -24,6 +24,15 @@ export type CredentialInput = Omit<StoredCredential, 'id' | 'updatedAt' | 'delet
 }
 export type SnippetInput = Omit<Snippet, 'id' | 'updatedAt' | 'deleted'> & { id?: string }
 
+export type KnownHost = {
+  host: string
+  port: number
+  algo: string
+  key: string
+  addedAt: string
+}
+export type KnownHostInput = Omit<KnownHost, 'addedAt'> & { addedAt?: string }
+
 const MIGRATIONS = [
   `CREATE TABLE IF NOT EXISTS hosts (
      id TEXT PRIMARY KEY,
@@ -53,10 +62,18 @@ const MIGRATIONS = [
      updated_at TEXT NOT NULL,
      deleted INTEGER NOT NULL DEFAULT 0
    )`,
-  `CREATE TABLE IF NOT EXISTS meta (
-     key TEXT PRIMARY KEY,
-     value TEXT NOT NULL
-   )`,
+   `CREATE TABLE IF NOT EXISTS known_hosts (
+      host TEXT NOT NULL,
+      port INTEGER NOT NULL,
+      algo TEXT NOT NULL,
+      key TEXT NOT NULL,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY (host, port, algo)
+    )`,
+   `CREATE TABLE IF NOT EXISTS meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )`,
   `CREATE INDEX IF NOT EXISTS hosts_updated_at ON hosts (updated_at)`,
   `CREATE INDEX IF NOT EXISTS credentials_updated_at ON credentials (updated_at)`,
   `CREATE INDEX IF NOT EXISTS snippets_updated_at ON snippets (updated_at)`,
@@ -92,9 +109,9 @@ export class Store {
       )
     } else if (version === '1') {
       await platform.db.exec('DROP TABLE IF EXISTS credentials')
-      // MIGRATIONS[1] is the credentials CREATE with `secret`; index 4 is credentials_updated_at
-      await platform.db.exec(MIGRATIONS[1])
-      await platform.db.exec(MIGRATIONS[5])
+      // MIGRATIONS[1] is the credentials CREATE with `secret`; MIGRATIONS[6] is credentials_updated_at
+      await platform.db.exec(MIGRATIONS[1]!)
+      await platform.db.exec(MIGRATIONS[6]!)
       for (const k of STALE_META_KEYS) {
         await platform.db.exec('DELETE FROM meta WHERE key = ?', [k])
       }
@@ -334,6 +351,32 @@ export class Store {
     return removed
   }
 
+  // ---- known_hosts ----
+
+  async saveKnownHost(input: KnownHostInput): Promise<KnownHost> {
+    const addedAt = input.addedAt ?? this.#now()
+    const host: KnownHost = {
+      host: input.host,
+      port: input.port,
+      algo: input.algo,
+      key: input.key,
+      addedAt,
+    }
+    await this.#db.exec(
+      `INSERT INTO known_hosts (host, port, algo, key, added_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(host, port, algo) DO UPDATE SET key = excluded.key, added_at = excluded.added_at`,
+      [host.host, host.port, host.algo, host.key, host.addedAt],
+    )
+    return host
+  }
+
+  async listKnownHosts(): Promise<KnownHost[]> {
+    const rows = await this.#db.query<KnownHostRow>(
+      'SELECT host, port, algo, key, added_at FROM known_hosts ORDER BY host, port, algo',
+    )
+    return rows.map(toKnownHost)
+  }
+
   async getMetaValue(key: string): Promise<string | null> {
     const rows = await this.#db.query<{ value: string }>(
       'SELECT value FROM meta WHERE key = ?',
@@ -384,6 +427,14 @@ interface SnippetRow {
   deleted: number
 }
 
+interface KnownHostRow {
+  host: string
+  port: number
+  algo: string
+  key: string
+  added_at: string
+}
+
 function parseTags(raw: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw)
@@ -427,5 +478,15 @@ function toSnippet(row: SnippetRow): Snippet {
     tags: parseTags(row.tags),
     updatedAt: row.updated_at,
     deleted: row.deleted === 1,
+  }
+}
+
+function toKnownHost(row: KnownHostRow): KnownHost {
+  return {
+    host: row.host,
+    port: row.port,
+    algo: row.algo,
+    key: row.key,
+    addedAt: row.added_at,
   }
 }

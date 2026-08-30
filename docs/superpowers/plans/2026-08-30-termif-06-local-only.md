@@ -156,13 +156,13 @@ ambiguous — you will not know whether you broke it or it was already broken.
 
 Added here, wired up in Task 10. Splitting them keeps this commit pure schema.
 
-- [ ] Failing test: the table round trips `(host, port, algo, key, addedAt)`.
-- [ ] Failing test: inserting the same `(host, port, algo)` twice replaces the
+- [x] Failing test: the table round trips `(host, port, algo, key, addedAt)`.
+- [x] Failing test: inserting the same `(host, port, algo)` twice replaces the
       key rather than duplicating the row — a host that rotates its key must not
       end up with two conflicting entries.
-- [ ] Failing test: `listKnownHosts()` on an empty table returns `[]`, not
+- [x] Failing test: `listKnownHosts()` on an empty table returns `[]`, not
       `null` and not a throw.
-- [ ] Implement the table and its two store methods:
+- [x] Implement the table and its two store methods:
 
           CREATE TABLE IF NOT EXISTS known_hosts (
             host     TEXT    NOT NULL,
@@ -173,7 +173,7 @@ Added here, wired up in Task 10. Splitting them keeps this commit pure schema.
             PRIMARY KEY (host, port, algo)
           )
 
-- [ ] `git commit -m "feat(core): add a known_hosts table"`
+- [x] `git commit -m "feat(core): add a known_hosts table"`
 
 ### Task 4 — delete sync and the sheet client
 

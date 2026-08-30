@@ -179,4 +179,51 @@ describe('Store', () => {
     await store.setMetaValue('lastPull', '2026-08-28T11:00:00.000Z')
     expect(await store.getMetaValue('lastPull')).toBe('2026-08-28T11:00:00.000Z')
   })
+
+  it('known_hosts round-trips host, port, algo, key, addedAt', async () => {
+    const { store, clock: c } = await openStore()
+    c.set('2026-08-28T10:00:00.000Z')
+    await store.saveKnownHost({
+      host: 'example.com',
+      port: 22,
+      algo: 'ssh-ed25519',
+      key: 'AAAAC3NzaC1lZDI1NTE5AAAAI',
+    })
+    const rows = await store.listKnownHosts()
+    expect(rows).toEqual([
+      {
+        host: 'example.com',
+        port: 22,
+        algo: 'ssh-ed25519',
+        key: 'AAAAC3NzaC1lZDI1NTE5AAAAI',
+        addedAt: '2026-08-28T10:00:00.000Z',
+      },
+    ])
+  })
+
+  it('known_hosts replaces on same host,port,algo rather than duplicating', async () => {
+    const { store, clock: c } = await openStore()
+    await store.saveKnownHost({
+      host: 'example.com',
+      port: 22,
+      algo: 'ssh-ed25519',
+      key: 'AAAAFIRST',
+    })
+    c.set('2026-08-28T11:00:00.000Z')
+    await store.saveKnownHost({
+      host: 'example.com',
+      port: 22,
+      algo: 'ssh-ed25519',
+      key: 'AAAASECOND',
+    })
+    const rows = await store.listKnownHosts()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.key).toBe('AAAASECOND')
+    expect(rows[0]?.addedAt).toBe('2026-08-28T11:00:00.000Z')
+  })
+
+  it('listKnownHosts on empty returns []', async () => {
+    const { store } = await openStore()
+    expect(await store.listKnownHosts()).toEqual([])
+  })
 })
