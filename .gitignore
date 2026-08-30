@@ -17,3 +17,4 @@ playwright-report/
 .env.live
 apps/desktop/e2e/.env.live
 .superpowers/
+.vite/
