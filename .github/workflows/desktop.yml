@@ -32,14 +32,12 @@ jobs:
         working-directory: apps/desktop
         run: npm install
 
-      - name: Rebuild native modules for Electron
-        working-directory: apps/desktop
-        run: npx electron-rebuild -f -w better-sqlite3
-
       - name: Typecheck
         working-directory: apps/desktop
         run: npm run typecheck
 
+      # Unit tests and build run under Node ABI, so the native module must NOT
+      # be rebuilt for Electron yet — that mismatch is what reddens the gate.
       - name: Unit tests
         working-directory: apps/desktop
         run: npm test
@@ -47,6 +45,12 @@ jobs:
       - name: Build
         working-directory: apps/desktop
         run: npm run build
+
+      # Only the smoke test launches Electron and needs the Electron ABI. Rebuild
+      # the native module immediately before it, after test and build are done.
+      - name: Rebuild native modules for Electron
+        working-directory: apps/desktop
+        run: npx electron-rebuild -f -w better-sqlite3
 
       # Electron needs a display; on Linux this would want xvfb, which is why
       # the matrix is macOS and Windows only.
