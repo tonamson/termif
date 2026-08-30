@@ -264,4 +264,100 @@ describe('Store', () => {
     expect((await store.listCredentials()).map((c) => c.id)).toEqual([cred.id])
     expect((await store.getCredential(cred.id))?.secret).toBe('hunter2')
   })
+
+  it('fresh empty DB opens and credential round-trips', async () => {
+    const { store } = await openStore()
+    const cred = await store.upsertCredential({ label: 'a', kind: 'password', secret: 's' })
+    expect((await store.listCredentials()).map((c) => c.id)).toEqual([cred.id])
+  })
+
+  it('v2-shape DB keeps existing rows and accepts a passphrase write', async () => {
+    const db = await createFakeDb()
+    await db.exec(
+      `CREATE TABLE credentials (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        secret TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0
+      )`,
+    )
+    await db.exec(`CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`)
+    await db.exec(`INSERT INTO credentials (id, label, kind, secret, updated_at, deleted) VALUES (?, ?, ?, ?, ?, ?)`, [
+      'c1',
+      'old',
+      'password',
+      'old-secret',
+      '2026-08-28T09:00:00.000Z',
+      0,
+    ])
+    await db.exec(`INSERT INTO meta (key, value) VALUES (?, ?)`, ['schemaVersion', '2'])
+
+    const store = await Store.open({ db, now: () => '2026-08-28T10:00:00.000Z' })
+    expect((await store.listCredentials()).map((c) => c.label)).toEqual(['old'])
+    const cred = await store.upsertCredential({
+      label: 'new',
+      kind: 'key',
+      secret: 'pem',
+      passphrase: 'pw',
+    })
+    expect((await store.getCredential(cred.id))?.passphrase).toBe('pw')
+    expect((await store.listCredentials())).toHaveLength(2)
+  })
+
+  it('opening the same DB twice is idempotent', async () => {
+    const db = await createFakeDb()
+    const store1 = await Store.open({ db, now: () => '2026-08-28T10:00:00.000Z' })
+    await store1.upsertCredential({ label: 'a', kind: 'password', secret: 's' })
+    const store2 = await Store.open({ db, now: () => '2026-08-28T10:00:00.000Z' })
+    expect((await store2.listCredentials())).toHaveLength(1)
+    // Second open should not drop the row
+    expect((await store2.getCredential((await store2.listCredentials())[0]!.id))?.secret).toBe('s')
+  })
+
+  it('existing hosts and snippets survive a credentials repair', async () => {
+    const db = await createFakeDb()
+    await db.exec(
+      `CREATE TABLE credentials (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        cipher TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0
+      )`,
+    )
+    await db.exec(`CREATE TABLE hosts (id TEXT PRIMARY KEY, label TEXT NOT NULL, hostname TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, auth_ref TEXT, tags TEXT NOT NULL, group_id TEXT, updated_at TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0)`)
+    await db.exec(`CREATE TABLE snippets (id TEXT PRIMARY KEY, label TEXT NOT NULL, body TEXT NOT NULL, tags TEXT NOT NULL, updated_at TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0)`)
+    await db.exec(`CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`)
+    await db.exec(`INSERT INTO meta (key, value) VALUES (?, ?)`, ['schemaVersion', '3'])
+    await db.exec(`INSERT INTO hosts (id, label, hostname, port, username, auth_ref, tags, group_id, updated_at, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+      'h1',
+      'web-1',
+      'h.example.com',
+      22,
+      'u',
+      null,
+      '[]',
+      null,
+      '2026-08-28T10:00:00.000Z',
+      0,
+    ])
+    await db.exec(`INSERT INTO snippets (id, label, body, tags, updated_at, deleted) VALUES (?, ?, ?, ?, ?, ?)`, [
+      's1',
+      'snip',
+      'body',
+      '[]',
+      '2026-08-28T10:00:00.000Z',
+      0,
+    ])
+
+    const store = await Store.open({ db, now: () => '2026-08-28T10:00:00.000Z' })
+    expect((await store.listHosts()).map((h) => h.id)).toEqual(['h1'])
+    expect((await store.listSnippets()).map((s) => s.id)).toEqual(['s1'])
+    // And credentials now works
+    const cred = await store.upsertCredential({ label: 'new', kind: 'password', secret: 'x' })
+    expect(cred.secret).toBe('x')
+  })
 })
