@@ -5,6 +5,7 @@ import type { App } from '../state/boot.js'
 import { HostList } from '../views/HostList.js'
 import { HostForm } from '../views/HostForm.js'
 import { TerminalTabs } from '../views/TerminalTabs.js'
+import { SidebarResizer } from '../views/SidebarResizer.js'
 import { SftpBrowser } from '../views/SftpBrowser.js'
 import { ForwardPanel } from '../views/ForwardPanel.js'
 import { Titlebar, type Pane } from '../views/Titlebar.js'
@@ -31,7 +32,7 @@ export function MainLayout({ app }: { app: App }) {
   return (
     <div className="shell">
       <Titlebar pane={pane} onPaneChange={setPane} />
-      <div className="layout">
+      <div className="layout" style={{ ['--sidebar-w' as string]: `${prefs.sidebarWidth}px` }}>
         <aside className="layout__sidebar">
           <HostList
             hosts={hostStore.visibleHosts()}
@@ -52,6 +53,7 @@ export function MainLayout({ app }: { app: App }) {
             onDelete={(id) => void hostStore.remove(id)}
             onAdd={() => setEditing({ id: null })}
           />
+          <SidebarResizer width={prefs.sidebarWidth} onWidth={(w) => app.prefs.set('sidebarWidth', w)} />
         </aside>
 
         <main className="layout__main">

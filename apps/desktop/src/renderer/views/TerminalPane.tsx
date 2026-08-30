@@ -68,16 +68,35 @@ export function TerminalPane({ tabId, sessions, active }: TerminalPaneProps) {
     })
 
     // Refit on container size changes so a window resize reaches the remote PTY.
-    const observer = new ResizeObserver(() => {
+    let lastCols = term.cols
+    let lastRows = term.rows
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const refit = (): void => {
       try {
         fitAddon.fit()
       } catch {
-        // Fit throws when the element is hidden; harmless.
+        return
       }
+      // Guard against both a wasted round trip and the classic observer loop:
+      // fit() resizes the very element we observe.
+      if (term.cols === lastCols && term.rows === lastRows) return
+      lastCols = term.cols
+      lastRows = term.rows
+      // term.onResize will fire and call sessions.resizeTab; no direct call needed
+    }
+
+    const observer = new ResizeObserver(() => {
+      if (timer !== null) return
+      timer = setTimeout(() => {
+        timer = null
+        refit()
+      }, 100)
     })
     observer.observe(element)
 
     return () => {
+      if (timer !== null) clearTimeout(timer)
       observer.disconnect()
       resizeSub.dispose()
       dataSub.dispose()

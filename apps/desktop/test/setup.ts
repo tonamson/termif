@@ -4,17 +4,23 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
 
-// jsdom does not implement ResizeObserver, which TerminalPane uses to refit on
-// container size changes. Supply a no-op so the component mounts under test;
-// pane fit is exercised directly via onResize/onData handlers.
-if (typeof globalThis.ResizeObserver === 'undefined') {
-  class ResizeObserverStub {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
+// jsdom has no ResizeObserver. The stub records instances so a test can fire a
+// resize by hand — the real one never fires in jsdom, and TerminalPane's whole
+// job is reacting to it.
+class ResizeObserverStub {
+  static instances: ResizeObserverStub[] = []
+  constructor(readonly callback: ResizeObserverCallback) {
+    ResizeObserverStub.instances.push(this)
   }
-  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+  fire(): void {
+    this.callback([], this as unknown as ResizeObserver)
+  }
 }
+globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+;(globalThis as Record<string, unknown>).ResizeObserverStub = ResizeObserverStub
 
 // Without a global `afterEach` (vitest globals are off) RTL cannot register
 // its own auto-cleanup, so renders leak across tests within a file and
