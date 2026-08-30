@@ -7,6 +7,7 @@ import type { App } from '../state/boot.js'
 import { HostList } from '../views/HostList.js'
 import { HostForm } from '../views/HostForm.js'
 import { SyncBadge } from '../views/SyncBadge.js'
+import { SignInScreen } from '../views/SignInScreen.js'
 import { TerminalTabs } from '../views/TerminalTabs.js'
 import { SftpBrowser } from '../views/SftpBrowser.js'
 import { ForwardPanel } from '../views/ForwardPanel.js'
@@ -39,7 +40,10 @@ export function MainLayout({ app }: { app: App }) {
     return app.store.onChange(() => void hostStore.refresh())
   }, [app.store, hostStore])
 
-  useEffect(() => app.sync?.onStatus(setSyncStatus), [app.sync])
+  const [signingIn, setSigningIn] = useState(false)
+  const [hasSync, setHasSync] = useState(app.sync !== null)
+
+  useEffect(() => app.sync?.onStatus(setSyncStatus), [app.sync, hasSync])
 
   const editingHost =
     editing?.id == null ? null : (hosts.hosts.find((h) => h.id === editing.id) ?? null)
@@ -47,7 +51,24 @@ export function MainLayout({ app }: { app: App }) {
   return (
     <div className="layout">
       <aside className="layout__sidebar">
-        <SyncBadge status={syncStatus} onSyncNow={() => void app.sync?.syncNow()} />
+        {hasSync ? (
+          <SyncBadge status={syncStatus} onSyncNow={() => void app.sync?.syncNow()} />
+        ) : (
+          <button type="button" onClick={() => setSigningIn(true)}>
+            {t('sync.signIn')}
+          </button>
+        )}
+        {signingIn && (
+          <SignInScreen
+            app={app}
+            onDone={() => {
+              setSigningIn(false)
+              setHasSync(true)
+              setSyncStatus(app.sync?.status ?? syncStatus)
+            }}
+            onCancel={() => setSigningIn(false)}
+          />
+        )}
 
         <HostList
           hosts={hostStore.visibleHosts()}
