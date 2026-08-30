@@ -68,7 +68,11 @@ export function TerminalPane({ tabId, sessions, active }: TerminalPaneProps) {
     fit.current = fitAddon
 
     const unsubscribe = sessions.subscribeTab(tabId, (bytes) => {
-      term.write(bytes)
+      try {
+        term.write(bytes)
+      } catch {
+        // Ignored if term unmounted
+      }
     })
 
     const dataSub = term.onData((data) => {
@@ -86,20 +90,15 @@ export function TerminalPane({ tabId, sessions, active }: TerminalPaneProps) {
 
     const refit = (): void => {
       const box = element.getBoundingClientRect()
-      // A hidden panel reports 0×0; fitting then would collapse the terminal
-      // to zero rows. The ResizeObserver fires again when the panel returns.
       if (box.width === 0 || box.height === 0) return
       try {
         fitAddon.fit()
       } catch {
         return
       }
-      // Guard against both a wasted round trip and the classic observer loop:
-      // fit() resizes the very element we observe.
       if (term.cols === lastCols && term.rows === lastRows) return
       lastCols = term.cols
       lastRows = term.rows
-      // term.onResize will fire and call sessions.resizeTab; no direct call needed
     }
 
     const observer = new ResizeObserver(() => {
@@ -113,11 +112,21 @@ export function TerminalPane({ tabId, sessions, active }: TerminalPaneProps) {
 
     return () => {
       if (timer !== null) clearTimeout(timer)
-      observer.disconnect()
-      resizeSub.dispose()
-      dataSub.dispose()
-      unsubscribe()
-      term.dispose()
+      try {
+        observer.disconnect()
+      } catch {}
+      try {
+        resizeSub.dispose()
+      } catch {}
+      try {
+        dataSub.dispose()
+      } catch {}
+      try {
+        unsubscribe()
+      } catch {}
+      try {
+        term.dispose()
+      } catch {}
       terminal.current = null
       fit.current = null
     }
@@ -138,9 +147,14 @@ export function TerminalPane({ tabId, sessions, active }: TerminalPaneProps) {
     <div
       ref={container}
       className="terminal-pane"
-      // Kept mounted while hidden: unmounting would discard scrollback, and
-      // reconnect explicitly promises to keep it (spec §6).
-      style={{ display: active ? 'block' : 'none', height: '100%' }}
+      style={{
+        display: active ? 'block' : 'none',
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+      }}
     />
   )
 }
