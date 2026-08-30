@@ -36,6 +36,7 @@ not "not written yet" — it is out of v1 scope.
 | 10 | [`plans/2026-08-30-termif-10-schema-versioning.md`](plans/2026-08-30-termif-10-schema-versioning.md) — numbered migration runner on `PRAGMA user_version` | 6 | **complete (2026-08-30)** — MIGRATIONS is string[][], SCHEMA_VERSION derived, adopt+runMigrations, vault repair preserved, 89 core tests green, rewrite pattern proven, docs + diagnostics | — |
 | 12 | [`plans/2026-08-30-termif-12-host-connection-status.md`](plans/2026-08-30-termif-12-host-connection-status.md) — sidebar dot follows session state, release 0.1.6 | 4 | **complete (2026-08-30)** — hostStates() strongest wins, MainLayout subscribes, 95 core + 270 desktop tests green, Termif-0.1.6-arm64.dmg 104M / Termif-0.1.6.dmg 108M | — |
 | 13 | [`plans/2026-08-30-termif-13-main-panels.md`](plans/2026-08-30-termif-13-main-panels.md) — terminal-first exclusive main panels, SFTP via titlebar, oscillation fix, real geometry tier | 6 | **complete (2026-08-30)** — panels + oscillation killed (28.5 RO/s → 0) + geometry tier, 274 desktop + 95 core + 9 e2e green, 0.1.7 | — |
+| 14 | [`plans/2026-08-30-termif-ui-redesign-plan.md`](plans/2026-08-30-termif-ui-redesign-plan.md) — Hybrid Studio Console UI/UX redesign | 4 | not started | — |
 
 Plans 6 and 7 were added on 2026-08-30 and run last. Plan 6 removes the
 encryption and sync layers; Plan 7 then verifies what remains against a real
