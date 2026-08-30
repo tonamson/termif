@@ -1,61 +1,50 @@
-/**
- * The single source of truth for colour. `tokens.css` mirrors these values for
- * CSS, and `terminalTheme.ts` reshapes them for xterm; a test in
- * `test/renderer/palette.test.ts` keeps the mirror honest and checks every
- * pair against WCAG AA.
- */
-export const palette = {
-  // Four background levels. Depth reads as lightness, not as borders.
-  bgApp: '#0d1117',
-  bgSurface: '#12171f',
-  bgRaised: '#1b222c',
-  bgOverlay: '#212a35',
+/* Mirror of src/renderer/styles/tokens.css. Change both together; the test in
+   test/renderer/palette.test.ts fails if they drift. */
+export const PALETTE = {
+  bgApp: '#090d14',
+  bgSurface: '#0f141d',
+  bgRaised: '#161e2a',
+  bgOverlay: '#1d2636',
 
-  // Three foreground levels.
-  fg: '#e6edf3',
-  fgMuted: '#a7b3c0',
-  fgSubtle: '#8b98a6',
+  fg: '#f0f6fc',
+  fgMuted: '#94a3b8',
+  fgSubtle: '#64748b',
 
-  // One accent, for focus and the primary action.
-  accent: '#4c8dff',
-  accentFg: '#0d1117',
+  accent: '#38bdf8',
+  accentFg: '#090d14',
 
-  // Semantic colours. State only, never decoration.
-  ok: '#3fb950',
-  warn: '#d29922',
-  danger: '#f85149',
+  ok: '#34d399',
+  warn: '#fbbf24',
+  danger: '#f87171',
 
-  border: '#232c38',
-  borderStrong: '#3a4553',
-} as const
+  border: '#1e293b',
+  borderStrong: '#334155',
 
-export type PaletteKey = keyof typeof palette
+  space0: '2px',
+  space1: '4px',
+  space2: '8px',
+  space3: '12px',
+  space4: '16px',
+  space5: '24px',
+  space6: '32px',
 
-/** xterm order: 8 normal, then 8 bright. */
-export const ansi = [
-  '#484f58', '#ff7b72', '#3fb950', '#d29922',
-  '#6ca6ff', '#bc8cff', '#39c5cf', '#b1bac4',
-  '#6e7681', '#ffa198', '#56d364', '#e3b341',
-  '#79c0ff', '#d2a8ff', '#56d4dd', '#f0f6fc',
-] as const
+  radiusSm: '4px',
+  radiusMd: '8px',
 
-function channel(value: number): number {
-  const c = value / 255
-  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-}
+  fontUi: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+  fontMono: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
 
-function luminance(hex: string): number {
-  const n = Number.parseInt(hex.slice(1), 16)
-  const r = channel((n >> 16) & 0xff)
-  const g = channel((n >> 8) & 0xff)
-  const b = channel(n & 0xff)
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
-}
+  shadowOverlay: '0 20px 50px rgb(0 0 0 / 0.6)',
 
-/** WCAG 2.1 relative-luminance contrast ratio, 1 to 21. */
-export function contrastRatio(a: string, b: string): number {
-  const la = luminance(a)
-  const lb = luminance(b)
-  const [hi, lo] = la > lb ? [la, lb] : [lb, la]
-  return (hi + 0.05) / (lo + 0.05)
-}
+  motionFast: '120ms ease',
+
+  titlebarH: '40px',
+  sidebarW: '260px',
+  sidebarRailW: '48px',
+  inspectorW: '240px',
+
+  zDrawer: 1,
+  zInspector: 5,
+  zSheet: 10,
+  zPalette: 20,
+} as const;

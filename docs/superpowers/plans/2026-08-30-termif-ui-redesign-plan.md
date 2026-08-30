@@ -25,16 +25,16 @@
 - Consumes: CSS custom properties (`--bg-primary`, `--bg-secondary`, `--border-color`, `--accent-color`, `--font-mono`, etc.)
 - Produces: Polished studio dark theme tokens and utility classes for glass/hairline styling.
 
-- [ ] **Step 1: Update design tokens in `tokens.css`**
+- [x] **Step 1: Update design tokens in `tokens.css`**
   Add Obsidian Slate palette, emerald/amber/sky status colors, hairline border variables, and crisp typography sizing.
 
-- [ ] **Step 2: Update base styles and utility scrollbars in `app.css`**
+- [x] **Step 2: Update base styles and utility scrollbars in `app.css`**
   Enhance custom slim scrollbars, input focus rings, and transition utilities.
 
-- [ ] **Step 3: Verify build / typecheck**
+- [x] **Step 3: Verify build / typecheck**
   Run: `pnpm --filter @termif/desktop build` (or test runner).
 
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   ```bash
   git add apps/desktop/src/renderer/styles/tokens.css apps/desktop/src/renderer/styles/app.css
   git commit -m "style: update design tokens and global styles for studio console"
@@ -52,17 +52,17 @@
 - Consumes: `activeView`, `onViewChange`, host connection statuses.
 - Produces: Segmented pill tab buttons (`Terminal`, `SFTP`, `Port Forwarding`), Quick Command bar (`Ctrl+P`), Host ping indicator badge.
 
-- [ ] **Step 1: Update `Titlebar.tsx` JSX and structure**
+- [x] **Step 1: Update `Titlebar.tsx` JSX and structure**
   Implement the centered Quick Search / Connect pill and refined pill tab selector with micro-interactions.
 
-- [ ] **Step 2: Style Titlebar controls with subtle gradients and active states**
+- [x] **Step 2: Style Titlebar controls with subtle gradients and active states**
   Ensure native window dragging works seamlessly while interactive controls remain clickable.
 
-- [ ] **Step 3: Run desktop test suite**
+- [x] **Step 3: Run desktop test suite**
   Run: `pnpm --filter @termif/desktop test`
   Expected: PASS
 
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   ```bash
   git add apps/desktop/src/renderer/views/Titlebar.tsx apps/desktop/src/renderer/styles/app.css
   git commit -m "feat(ui): upgrade titlebar with quick search and studio console switcher"
@@ -80,17 +80,17 @@
 - Consumes: Host records list, group tags, connection trigger callbacks.
 - Produces: Modern hierarchical group tree, status dot badges, hover quick-action menu (Connect / SFTP / Edit).
 
-- [ ] **Step 1: Refactor `HostList.tsx` layout**
+- [x] **Step 1: Refactor `HostList.tsx` layout**
   Structure collapsible group folders with server count badges and latency status dots.
 
-- [ ] **Step 2: Add hover action shortcuts & search filter UI**
+- [x] **Step 2: Add hover action shortcuts & search filter UI**
   Integrate keyboard accessible filtering and fast action buttons.
 
-- [ ] **Step 3: Run desktop test suite**
+- [x] **Step 3: Run desktop test suite**
   Run: `pnpm --filter @termif/desktop test`
   Expected: PASS
 
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   ```bash
   git add apps/desktop/src/renderer/views/HostList.tsx apps/desktop/src/renderer/styles/app.css
   git commit -m "feat(ui): modernize hostlist sidebar with hierarchical groups and status badges"
@@ -109,17 +109,17 @@
 - Consumes: Active terminal sessions, remote file tree data.
 - Produces: Polished tab chrome, breadcrumbs navigation in SFTP, high-contrast file list.
 
-- [ ] **Step 1: Style `TerminalTabs.tsx` with browser-grade tab indicators**
+- [x] **Step 1: Style `TerminalTabs.tsx` with browser-grade tab indicators**
   Add close buttons, active tab indicators, and add tab shortcut buttons.
 
-- [ ] **Step 2: Refine `SftpBrowser.tsx` toolbar and breadcrumbs**
+- [x] **Step 2: Refine `SftpBrowser.tsx` toolbar and breadcrumbs**
   Make breadcrumb segments interactive, add file permission tags, and clean up file size badges.
 
-- [ ] **Step 3: Full test suite verification**
+- [x] **Step 3: Full test suite verification**
   Run: `pnpm test`
   Expected: ALL PASS
 
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   ```bash
   git add apps/desktop/src/renderer/views/TerminalTabs.tsx apps/desktop/src/renderer/views/SftpBrowser.tsx apps/desktop/src/renderer/styles/app.css
   git commit -m "feat(ui): polish terminal tabs and sftp file explorer interface"

@@ -2,25 +2,26 @@
    test/renderer/palette.test.ts fails if they drift. */
 :root {
   color-scheme: dark;
-  --bg-app: #0d1117;
-  --bg-surface: #12171f;
-  --bg-raised: #1b222c;
-  --bg-overlay: #212a35;
+  --bg-app: #090d14;
+  --bg-surface: #0f141d;
+  --bg-raised: #161e2a;
+  --bg-overlay: #1d2636;
 
-  --fg: #e6edf3;
-  --fg-muted: #a7b3c0;
-  --fg-subtle: #8b98a6;
+  --fg: #f0f6fc;
+  --fg-muted: #94a3b8;
+  --fg-subtle: #64748b;
 
-  --accent: #4c8dff;
-  --accent-fg: #0d1117;
+  --accent: #38bdf8;
+  --accent-fg: #090d14;
 
-  --ok: #3fb950;
-  --warn: #d29922;
-  --danger: #f85149;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
 
-  --border: #232c38;
-  --border-strong: #3a4553;
+  --border: #1e293b;
+  --border-strong: #334155;
 
+  --space-0: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -31,16 +32,14 @@
   --radius-sm: 4px;
   --radius-md: 8px;
 
-  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --shadow-overlay: 0 16px 48px rgb(0 0 0 / 0.5);
+  --shadow-overlay: 0 20px 50px rgb(0 0 0 / 0.6);
 
   --motion-fast: 120ms ease;
 
-  --space-0: 2px;
-
-  --titlebar-h: 38px;
+  --titlebar-h: 40px;
   --sidebar-w: 260px;
   --sidebar-rail-w: 48px;
   --inspector-w: 240px;
@@ -50,3 +49,4 @@
   --z-sheet: 10;
   --z-palette: 20;
 }
+

@@ -75,39 +75,57 @@ export function TerminalTabs({ app }: { app: App }) {
   }
 
   return (
-    <div className="terminal-tabs">
-      <div ref={bar} role="tablist" className="terminal-tabs__bar">
-        {shown.map((tab) => (
-          <div key={tab.id} className={`terminal-tabs__tab terminal-tabs__tab--${tab.state}`}>
+    <div className="terminal-tabs-view" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div ref={bar} role="tablist" className="terminal-tabs__bar terminal-bar">
+        <div className="terminal-tabs">
+          {shown.map((tab) => (
+            <div
+              key={tab.id}
+              className={`terminal-tabs__tab terminal-tab terminal-tabs__tab--${tab.state}`}
+              data-active={tab.id === activeId}
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab.id === activeId}
+                onClick={() => tabStore.activate(tab.id)}
+              >
+                {tab.title}
+                {tab.state === 'reconnecting' && ' …'}
+              </button>
+              <button
+                type="button"
+                className="terminal-tab__close"
+                aria-label={t('terminal.close', { title: tab.title })}
+                onClick={() => void app.sessions.closeTab(tab.id)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {hidden.length > 0 && (
             <button
               type="button"
-              role="tab"
-              aria-selected={tab.id === activeId}
-              onClick={() => tabStore.activate(tab.id)}
+              className="terminal-bar__btn"
+              onClick={(e) => {
+                const rect = (e.target as HTMLElement).getBoundingClientRect()
+                setMenu({ x: rect.left, y: rect.bottom })
+              }}
             >
-              {tab.title}
-              {tab.state === 'reconnecting' && ' …'}
+              +{hidden.length}
             </button>
-            <button
-              type="button"
-              aria-label={t('terminal.close', { title: tab.title })}
-              onClick={() => void app.sessions.closeTab(tab.id)}
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        {hidden.length > 0 && (
+          )}
+        </div>
+        <div className="terminal-bar__actions" style={{ display: 'flex', gap: '4px' }}>
           <button
             type="button"
-            onClick={(e) => {
-              const rect = (e.target as HTMLElement).getBoundingClientRect()
-              setMenu({ x: rect.left, y: rect.bottom })
-            }}
+            className="terminal-bar__btn"
+            title="Snippet Palette (⌘K)"
+            onClick={() => setPaletteOpen((prev) => !prev)}
           >
-            +{hidden.length}
+            ⌘K
           </button>
-        )}
+        </div>
       </div>
       {menu !== null && (
         <Menu
@@ -128,7 +146,7 @@ export function TerminalTabs({ app }: { app: App }) {
         </p>
       )}
 
-      <div className="terminal-tabs__panes">
+      <div className="terminal-tabs__panes terminal-canvas-container" style={{ flex: 1, position: 'relative' }}>
         {tabs.map((tab) => (
           <TerminalPane
             key={tab.id}
@@ -139,11 +157,14 @@ export function TerminalTabs({ app }: { app: App }) {
         ))}
       </div>
 
-      {paletteOpen && activeId !== null && (
+      {paletteOpen && (
         <SnippetPalette
-          app={app}
-          onSend={async (body) => {
-            await app.sessions.writeToTab(activeId, new TextEncoder().encode(body))
+          snippets={app.snippets}
+          onInsert={(body) => {
+            if (activeId !== null) {
+              const session = app.sessions.getSession(activeId)
+              session?.send(body)
+            }
             setPaletteOpen(false)
           }}
           onClose={() => setPaletteOpen(false)}
