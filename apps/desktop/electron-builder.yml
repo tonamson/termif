@@ -4,14 +4,13 @@ directories:
   output: dist
   buildResources: build
 
+asar: false
 files:
   - out/**
   - package.json
-
-# The native addon must ship unpacked: a .node inside app.asar cannot be loaded.
-asarUnpack:
-  - '**/*.node'
-  - node_modules/better-sqlite3/**
+  - '!node_modules/@termif/**'
+  - '!**/*.ts'
+  - '!**/*.map'
 
 mac:
   category: public.app-category.developer-tools

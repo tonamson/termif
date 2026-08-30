@@ -12,3 +12,8 @@ tools/
 out/
 test-results/
 playwright-report/
+
+# live acceptance credentials, never commit
+.env.live
+apps/desktop/e2e/.env.live
+.superpowers/
