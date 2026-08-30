@@ -180,14 +180,14 @@ Added here, wired up in Task 10. Splitting them keeps this commit pure schema.
 Before the vault, because `sheet/rows.ts` and `sheet/client.ts` both reference
 `Vault`; removing them first shrinks Task 5.
 
-- [ ] Delete `core/src/sync.ts`, `core/src/sheet/` (three files), and the four
+- [x] Delete `core/src/sync.ts`, `core/src/sheet/` (three files), and the four
       test files: `sync.test.ts`, `sheetClient.test.ts`, `merge.test.ts`,
       `sheetRows.test.ts`.
-- [ ] Prune `core/src/index.ts` and every `sync.*` key in `core/src/i18n/en.ts`.
-- [ ] Failing-first check in `core/test/i18n.test.ts`: no exported key starts
+- [x] Prune `core/src/index.ts` and every `sync.*` key in `core/src/i18n/en.ts`.
+- [x] Failing-first check in `core/test/i18n.test.ts`: no exported key starts
       with `sync.`. Leftover strings are the classic half-removal.
-- [ ] `npm test` in `packages/core` green.
-- [ ] `git commit -m "refactor(core): remove Google Sheets sync"`
+- [x] `npm test` in `packages/core` green.
+- [x] `git commit -m "refactor(core): remove Google Sheets sync"`
 
 ### Task 5 — delete the vault
 

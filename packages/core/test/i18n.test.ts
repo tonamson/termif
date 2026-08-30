@@ -34,4 +34,9 @@ describe('t', () => {
       expect(value.length, `empty message for ${key}`).toBeGreaterThan(0)
     }
   })
+
+  it('has no sync keys left (half-removal check)', () => {
+    const syncKeys = Object.keys(en).filter((k) => k.startsWith('sync.'))
+    expect(syncKeys, `leftover sync keys: ${syncKeys.join(', ')}`).toEqual([])
+  })
 })

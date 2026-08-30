@@ -35,23 +35,6 @@ export const en = {
   'vault.setup.mismatch': 'Those do not match.',
   'vault.remember': 'Unlock with biometrics on this device',
 
-  'sync.idle': 'Synced {when}',
-  'sync.running': 'Syncing…',
-  'sync.failed': 'Sync failed: {reason}. Working from this device.',
-  'sync.quota': 'Google rate-limited the sync. Retrying shortly.',
-  'sync.offline': 'Working on this device only',
-  'sync.signIn': 'Sign in to Google to sync',
-  'sync.signIn.body':
-    'Termif stores encrypted host data in a Google Sheet you own. Google never sees a readable password.',
-  'sync.signIn.start': 'Sign in with Google',
-  'sync.signIn.code': 'Enter this code: {code}',
-  'sync.signIn.open': 'Open Google in your browser',
-  'sync.signIn.waiting': 'Waiting for Google…',
-  'sync.signIn.denied': 'Google denied access: {reason}',
-  'sync.signIn.expired': 'The code expired. Start again.',
-  'sync.signIn.cancel': 'Not now',
-  'sync.signOut': 'Disconnect Google',
-
   'terminal.empty': 'Connect to a host to open a terminal.',
   'terminal.close': 'Close {title}',
 
@@ -149,8 +132,6 @@ export const en = {
   'snippet.cancel': 'Cancel',
   'snippet.new': 'New snippet',
   'snippet.removeGlyph': '×',
-
-  'sync.now': 'Sync now',
 
   'layout.tab.terminals': 'terminals',
   'layout.tab.files': 'files',
