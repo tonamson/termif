@@ -70,7 +70,7 @@ CSS file mirrors it and a test enforces the mirror.
     relative-luminance ratio between two `#rrggbb` strings, returning a number
     between 1 and 21.
 
-- [ ] **Step 1: Write the failing contrast test**
+- [x] **Step 1: Write the failing contrast test**
 
 Create `apps/desktop/test/renderer/palette.test.ts`:
 
@@ -174,12 +174,12 @@ describe('tokens.css mirrors the palette', () => {
 })
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 Run: `npx vitest run test/renderer/palette.test.ts`
 Expected: FAIL — cannot resolve `../../src/renderer/styles/palette.js`.
 
-- [ ] **Step 3: Write the palette module**
+- [x] **Step 3: Write the palette module**
 
 Create `apps/desktop/src/renderer/styles/palette.ts`:
 
@@ -247,7 +247,7 @@ export function contrastRatio(a: string, b: string): number {
 }
 ```
 
-- [ ] **Step 4: Write tokens.css**
+- [x] **Step 4: Write tokens.css**
 
 Create `apps/desktop/src/renderer/styles/tokens.css`. Values must match
 `palette.ts` exactly, or the mirror test fails:
@@ -300,18 +300,18 @@ Create `apps/desktop/src/renderer/styles/tokens.css`. Values must match
 `--font-mono` is the exact stack already passed to `new Terminal` at
 `src/renderer/views/TerminalPane.tsx:31`, so chrome and terminal cannot drift.
 
-- [ ] **Step 5: Run the test until green**
+- [x] **Step 5: Run the test until green**
 
 Run: `npx vitest run test/renderer/palette.test.ts`
 Expected: PASS. If a contrast assertion fails, adjust the offending colour in
 **both** `palette.ts` and `tokens.css` and rerun. Do not lower a threshold.
 
-- [ ] **Step 6: Run the full suite**
+- [x] **Step 6: Run the full suite**
 
 Run: `npm test`
 Expected: PASS, 184 prior tests plus the new palette tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/styles/palette.ts \
@@ -336,7 +336,7 @@ git commit -m "feat(desktop): add design tokens with WCAG contrast tests"
   `select`, `textarea`, `progress`, plus the classes `list-row`, `overlay`,
   and the `[data-variant]` button attribute contract.
 
-- [ ] **Step 1: Write base.css**
+- [x] **Step 1: Write base.css**
 
 Create `apps/desktop/src/renderer/styles/base.css`:
 
@@ -556,7 +556,7 @@ progress::-webkit-progress-value {
 }
 ```
 
-- [ ] **Step 2: Write app.css**
+- [x] **Step 2: Write app.css**
 
 Create `apps/desktop/src/renderer/styles/app.css`:
 
@@ -567,7 +567,7 @@ Create `apps/desktop/src/renderer/styles/app.css`:
 /* View blocks are appended here by later tasks. */
 ```
 
-- [ ] **Step 3: Import it once, at the renderer entry**
+- [x] **Step 3: Import it once, at the renderer entry**
 
 In `apps/desktop/src/renderer/main.tsx`, add as the first import line:
 
@@ -577,26 +577,26 @@ import './styles/app.css'
 
 `@xterm/xterm/css/xterm.css` stays where it is, in `TerminalPane.tsx`.
 
-- [ ] **Step 4: Confirm the suite still passes**
+- [x] **Step 4: Confirm the suite still passes**
 
 Run: `npm test`
 Expected: PASS. jsdom ignores the stylesheet, so this proves only that nothing
 broke — it is not evidence the styling is right.
 
-- [ ] **Step 5: Confirm the bundle actually contains the CSS**
+- [x] **Step 5: Confirm the bundle actually contains the CSS**
 
 Run: `npm run build`
 Then: `grep -c 'bg-app' out/renderer/assets/*.css`
 Expected: at least 1. Before this task that grep returns 0, because the only
 CSS in the bundle was xterm's.
 
-- [ ] **Step 6: Look at it**
+- [x] **Step 6: Look at it**
 
 Run: `npm run dev`
 Expected: dark window, readable text, focus rings visible when tabbing. Layout
 is still wrong — that is Task 4 onward.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/styles/base.css \
@@ -624,7 +624,7 @@ paints pure black against `--bg-app`. The seam is visible on every session.
   `foreground`, `cursor`, `cursorAccent`, `selectionBackground`, and the 16
   named ANSI keys xterm expects (`black`, `red`, …, `brightWhite`).
 
-- [ ] **Step 1: Make the test mock capture constructor options**
+- [x] **Step 1: Make the test mock capture constructor options**
 
 In `apps/desktop/test/renderer/TerminalPane.test.tsx`, the `Terminal` mock
 class currently ignores its argument. Add a module-level recorder above the
@@ -642,7 +642,7 @@ constructor(options: { theme?: Record<string, string>; fontFamily?: string }) {
 }
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Add to the same file:
 
@@ -668,12 +668,12 @@ Import `palette` at the top of the test file:
 import { palette } from '../../src/renderer/styles/palette.js'
 ```
 
-- [ ] **Step 3: Run it and confirm it fails**
+- [x] **Step 3: Run it and confirm it fails**
 
 Run: `npx vitest run test/renderer/TerminalPane.test.tsx`
 Expected: FAIL — `options.theme` is `undefined`.
 
-- [ ] **Step 4: Write the theme module**
+- [x] **Step 4: Write the theme module**
 
 Create `apps/desktop/src/renderer/styles/terminalTheme.ts`:
 
@@ -710,7 +710,7 @@ export const terminalTheme = {
 } as const
 ```
 
-- [ ] **Step 5: Wire it into the pane**
+- [x] **Step 5: Wire it into the pane**
 
 In `apps/desktop/src/renderer/views/TerminalPane.tsx`, import it:
 
@@ -722,7 +722,7 @@ and add `theme: terminalTheme,` to the `new Terminal({...})` options at line
 30. Leave `fontFamily`, `fontSize`, `cursorBlink`, `scrollback`, and
 `allowProposedApi` exactly as they are.
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `npx vitest run test/renderer/TerminalPane.test.tsx`
 Expected: PASS.
@@ -730,7 +730,7 @@ Expected: PASS.
 Run: `npm test`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/styles/terminalTheme.ts \
@@ -770,7 +770,7 @@ that mean different things.
   exported as `export type Pane = 'terminals' | 'files' | 'forwards'`;
   `MainLayout.tsx` imports it instead of declaring its own.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `apps/desktop/test/renderer/Titlebar.test.tsx`:
 
@@ -819,12 +819,12 @@ describe('Titlebar', () => {
 })
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 Run: `npx vitest run test/renderer/Titlebar.test.tsx`
 Expected: FAIL — cannot resolve `Titlebar.js`.
 
-- [ ] **Step 3: Write the component**
+- [x] **Step 3: Write the component**
 
 Create `apps/desktop/src/renderer/views/Titlebar.tsx`:
 
@@ -864,12 +864,12 @@ export function Titlebar({ pane, onPaneChange }: TitlebarProps) {
 }
 ```
 
-- [ ] **Step 4: Run the test to green**
+- [x] **Step 4: Run the test to green**
 
 Run: `npx vitest run test/renderer/Titlebar.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Use it in MainLayout**
+- [x] **Step 5: Use it in MainLayout**
 
 In `apps/desktop/src/renderer/app/MainLayout.tsx`:
 
@@ -895,7 +895,7 @@ In `apps/desktop/src/renderer/app/MainLayout.tsx`:
    Move `{connect.prompt}` to the position shown; everything else inside
    `<aside>` and `<main>` stays byte-identical.
 
-- [ ] **Step 6: Make the window frameless**
+- [x] **Step 6: Make the window frameless**
 
 In `apps/desktop/src/main/index.ts`, inside the `new BrowserWindow({...})`
 options, after `title: 'Termif',` add:
@@ -920,7 +920,7 @@ options, after `title: 'Termif',` add:
 `backgroundColor` prevents a white flash between window creation and
 `ready-to-show`.
 
-- [ ] **Step 7: Append the CSS**
+- [x] **Step 7: Append the CSS**
 
 Append to `apps/desktop/src/renderer/styles/app.css`:
 
@@ -988,7 +988,7 @@ Append to `apps/desktop/src/renderer/styles/app.css`:
 }
 ```
 
-- [ ] **Step 8: Run the suite and look at the window**
+- [x] **Step 8: Run the suite and look at the window**
 
 Run: `npm test`
 Expected: PASS. `MainLayout` has no unit test of its own, so the risk here is
@@ -999,13 +999,13 @@ Expected: one titlebar with a three-way segmented control; window drags by the
 bar; the three buttons still respond to clicks. If a button does not respond,
 `-webkit-app-region: no-drag` is missing or overridden.
 
-- [ ] **Step 9: Verify the e2e path still works**
+- [x] **Step 9: Verify the e2e path still works**
 
 Run: `npm run e2e`
 Expected: PASS. The smoke test never touches the pane nav, but it does launch
 a real window, which is where a frameless-window mistake shows up.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add apps/desktop/src/main/index.ts \
@@ -1037,7 +1037,7 @@ four always-visible buttons.
 - Produces: the class `layout__account`, used by `app.css`, wrapping the sync
   badge / sign-in button at the foot of the sidebar.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `apps/desktop/test/renderer/HostList.test.tsx`:
 
@@ -1075,14 +1075,14 @@ it('keeps row actions in the DOM so they stay keyboard-reachable', () => {
 Match the `hosts` shape to whatever the existing tests in this file build — if
 they use a `makeHost()` helper, use it here instead of the literal above.
 
-- [ ] **Step 2: Run it**
+- [x] **Step 2: Run it**
 
 Run: `npx vitest run test/renderer/HostList.test.tsx`
 Expected: PASS immediately — the markup already satisfies it. This test is a
 tripwire for step 4, which is about to hide those buttons: it fails loudly if
 someone reaches for `display: none`.
 
-- [ ] **Step 3: Restructure the sidebar in MainLayout**
+- [x] **Step 3: Restructure the sidebar in MainLayout**
 
 In `apps/desktop/src/renderer/app/MainLayout.tsx`, inside
 `<aside className="layout__sidebar">`, reorder to:
@@ -1126,7 +1126,7 @@ In `apps/desktop/src/renderer/app/MainLayout.tsx`, inside
 The `SignInScreen` stays outside `layout__account` because Task 6 makes it an
 overlay; nesting it inside the account row would clip it.
 
-- [ ] **Step 4: Append the CSS**
+- [x] **Step 4: Append the CSS**
 
 Append to `apps/desktop/src/renderer/styles/app.css`:
 
@@ -1233,7 +1233,7 @@ Append to `apps/desktop/src/renderer/styles/app.css`:
 }
 ```
 
-- [ ] **Step 5: Confirm the tripwire and the suite**
+- [x] **Step 5: Confirm the tripwire and the suite**
 
 Run: `npx vitest run test/renderer/HostList.test.tsx`
 Expected: PASS — including the delete-confirm test at line 140, which clicks a
@@ -1243,14 +1243,14 @@ browser the pointer is over the row by the time it clicks, so both agree.
 Run: `npm test`
 Expected: PASS.
 
-- [ ] **Step 6: Look at it**
+- [x] **Step 6: Look at it**
 
 Run: `npm run dev`
 Expected: search pinned at the top, list scrolling under it, sync badge at the
 foot. Row buttons appear on hover and when tabbed into. Tab through a row
 without the mouse and confirm the buttons become visible as focus enters.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/app/MainLayout.tsx \
@@ -1276,7 +1276,7 @@ markup changes except the four `<p>` empty states, which need none.
   `[data-variant]`) and the tokens from Task 1.
 - Produces: nothing other tasks depend on. This is the last CSS task.
 
-- [ ] **Step 1: Read the four views you are about to style**
+- [x] **Step 1: Read the four views you are about to style**
 
 Run:
 ```bash
@@ -1288,7 +1288,7 @@ cat src/renderer/views/SftpBrowser.tsx \
 Note the exact element each class sits on. Write CSS against what is there,
 not against what this plan assumes.
 
-- [ ] **Step 2: Append the terminal blocks**
+- [x] **Step 2: Append the terminal blocks**
 
 ```css
 /* --- Terminals ---------------------------------------------------------- */
@@ -1381,7 +1381,7 @@ not against what this plan assumes.
 }
 ```
 
-- [ ] **Step 3: Append the sync, overlay, and form blocks**
+- [x] **Step 3: Append the sync, overlay, and form blocks**
 
 ```css
 /* --- Sync badge --------------------------------------------------------- */
@@ -1493,7 +1493,7 @@ not against what this plan assumes.
 `.setup` and `.unlock` are full-screen roots, not overlays — `AppRoot` returns
 them instead of `MainLayout`, so they centre in the window on their own.
 
-- [ ] **Step 4: Append the SFTP, forwards, and transfer blocks**
+- [x] **Step 4: Append the SFTP, forwards, and transfer blocks**
 
 ```css
 /* --- SFTP --------------------------------------------------------------- */
@@ -1626,7 +1626,7 @@ them instead of `MainLayout`, so they centre in the window on their own.
 }
 ```
 
-- [ ] **Step 5: Mark the destructive and primary buttons**
+- [x] **Step 5: Mark the destructive and primary buttons**
 
 Add `data-variant="danger"` to the confirm-delete button in
 `src/renderer/views/HostList.tsx` and `data-variant="primary"` to the save
@@ -1635,7 +1635,7 @@ button in `src/renderer/views/HostForm.tsx`, the create button in
 attributes and change no text — the e2e test matches these buttons by
 accessible name (`/create vault/i`, `/^save/i`, `/^unlock/i`).
 
-- [ ] **Step 6: Check every class hook now has a rule**
+- [x] **Step 6: Check every class hook now has a rule**
 
 Run from `apps/desktop/`:
 ```bash
@@ -1648,7 +1648,7 @@ Expected: no output, apart from hooks built by template literal
 `hostkey--…`), which the loop cannot see and which the CSS above covers
 explicitly. Investigate anything else it prints.
 
-- [ ] **Step 7: Run the suite**
+- [x] **Step 7: Run the suite**
 
 Run: `npm test`
 Expected: PASS, 184+ tests.
@@ -1656,14 +1656,14 @@ Expected: PASS, 184+ tests.
 Run: `npm run typecheck`
 Expected: PASS.
 
-- [ ] **Step 8: Walk every screen**
+- [x] **Step 8: Walk every screen**
 
 Run: `npm run dev` and visit, in order: setup, unlock, empty sidebar, a
 populated sidebar, the host form, a terminal tab, the snippet palette
 (`Cmd+K`), the SFTP pane, the forwards pane. Each should look deliberate.
 Note anything that does not and fix it before committing.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/desktop/src/renderer/styles/app.css apps/desktop/src/renderer/views
@@ -1686,7 +1686,7 @@ looks like has to come from a real window.
 - Consumes: the running app. No source imports.
 - Produces: PNGs under `apps/desktop/e2e/__screens__/`, untracked.
 
-- [ ] **Step 1: Write the capture spec**
+- [x] **Step 1: Write the capture spec**
 
 Create `apps/desktop/e2e/screenshots.spec.ts`:
 
@@ -1748,7 +1748,7 @@ test('captures the main screens', async () => {
 })
 ```
 
-- [ ] **Step 2: Ignore the output**
+- [x] **Step 2: Ignore the output**
 
 Add to `apps/desktop/.gitignore` (create the file if absent):
 
@@ -1756,19 +1756,19 @@ Add to `apps/desktop/.gitignore` (create the file if absent):
 e2e/__screens__/
 ```
 
-- [ ] **Step 3: Run it**
+- [x] **Step 3: Run it**
 
 Run: `npm run e2e`
 Expected: both specs pass. If a `getByRole('tab', …)` call fails, the titlebar
 tabs lost their accessible name in Task 4 — fix that, not this test.
 
-- [ ] **Step 4: Look at all seven images**
+- [x] **Step 4: Look at all seven images**
 
 Open `apps/desktop/e2e/__screens__/`. This is the acceptance gate for the whole
 plan. A green suite over an ugly app is exactly the failure this plan exists to
 correct — if a screen still looks unfinished, fix it before step 6.
 
-- [ ] **Step 5: Confirm the constraints held**
+- [x] **Step 5: Confirm the constraints held**
 
 Run from the repo root:
 ```bash
@@ -1779,7 +1779,7 @@ grep -rn 'prefers-color-scheme' apps/desktop/src/renderer/styles/
 Expected: no change to `dependencies`; the CSP string identical to before; no
 `prefers-color-scheme` anywhere.
 
-- [ ] **Step 6: Update the status index**
+- [x] **Step 6: Update the status index**
 
 In `docs/superpowers/README.md`, add a row to the plans table:
 
@@ -1791,7 +1791,7 @@ Use the real date. Keep row 4 reserved for the deferred mobile shell. Add a
 line under "Work still owed" noting that light theme, theme switching, and a
 UX redesign are explicit non-goals recorded in the visual design spec.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop/e2e/screenshots.spec.ts \
