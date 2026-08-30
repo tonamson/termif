@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../state/useStore.js'
 import { createHostStore } from '../state/hostStore.js'
 import type { App } from '../state/boot.js'
@@ -21,9 +21,15 @@ export function MainLayout({ app }: { app: App }) {
 
   const [editing, setEditing] = useState<{ id: string | null } | null>(null)
   const [panel, setPanel] = useState<MainPanel>('terminal')
+  const panelRef = useRef<HTMLElement | null>(null)
   const returnOnEsc = (event: import('react').KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') setPanel('terminal')
   }
+  // Focus the panel when it opens: Esc lives on the panel's own keydown, so
+  // focus must be inside it or the key lands on body and nothing switches.
+  useEffect(() => {
+    if (panel !== 'terminal') panelRef.current?.focus()
+  }, [panel])
 
   const connect = useConnectFlow(app, hostStore)
   const [hostStates, setHostStates] = useState<ReadonlyMap<string, HostConnectionState>>(
@@ -124,12 +130,12 @@ export function MainLayout({ app }: { app: App }) {
                 <TerminalTabs app={app} />
               </section>
               {panel === 'files' && (
-                <section className="panel" data-panel="files" onKeyDown={returnOnEsc}>
+                <section className="panel" data-panel="files" tabIndex={-1} ref={panelRef} onKeyDown={returnOnEsc}>
                   <SftpBrowser app={app} />
                 </section>
               )}
               {panel === 'forwards' && (
-                <section className="panel" data-panel="forwards" onKeyDown={returnOnEsc}>
+                <section className="panel" data-panel="forwards" tabIndex={-1} ref={panelRef} onKeyDown={returnOnEsc}>
                   <ForwardPanel app={app} />
                 </section>
               )}
