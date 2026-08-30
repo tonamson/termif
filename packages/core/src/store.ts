@@ -12,6 +12,11 @@ import type { LocalDb, Platform, SqlValue } from './platform.js'
 
 const STALE_META_KEYS = ['kdfSalt', 'kdfParams', 'vaultCheck', 'spreadsheetId']
 
+export async function columnsOf(db: LocalDb, table: string): Promise<Set<string>> {
+  const rows = await db.query<{ name: string }>(`PRAGMA table_info(${table})`)
+  return new Set(rows.map((r) => r.name))
+}
+
 export type RowKind = 'hosts' | 'credentials' | 'snippets'
 type ChangeListener = (kind: RowKind) => void
 

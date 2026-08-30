@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Store } from '../src/store.js'
+import { Store, columnsOf } from '../src/store.js'
 import { createFakeDb } from './fakes/db.js'
 import type { Host } from '../src/model.js'
 
@@ -225,5 +225,43 @@ describe('Store', () => {
   it('listKnownHosts on empty returns []', async () => {
     const { store } = await openStore()
     expect(await store.listKnownHosts()).toEqual([])
+  })
+
+  it('columnsOf returns column names and empty for missing table', async () => {
+    const db = await createFakeDb()
+    await db.exec(`CREATE TABLE t (id TEXT PRIMARY KEY, name TEXT)`)
+    expect(await columnsOf(db, 't')).toEqual(new Set(['id', 'name']))
+    expect(await columnsOf(db, 'nope')).toEqual(new Set())
+  })
+
+  it('repairs a vault-era DB that has cipher not secret', async () => {
+    const db = await createFakeDb()
+    // Seed vault shape before Store.open
+    await db.exec(
+      `CREATE TABLE credentials (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        cipher TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        passphrase TEXT
+      )`,
+    )
+    await db.exec(`CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`)
+    await db.exec(`INSERT INTO meta (key, value) VALUES (?, ?)`, ['schemaVersion', '3'])
+    await db.exec(`INSERT INTO meta (key, value) VALUES (?, ?)`, [
+      'vaultMeta',
+      JSON.stringify([['schema_version', '1']]),
+    ])
+
+    const store = await Store.open({ db, now: () => '2026-08-28T10:00:00.000Z' })
+    const cred = await store.upsertCredential({
+      label: 're-entered',
+      kind: 'password',
+      secret: 'hunter2',
+    })
+    expect((await store.listCredentials()).map((c) => c.id)).toEqual([cred.id])
+    expect((await store.getCredential(cred.id))?.secret).toBe('hunter2')
   })
 })
