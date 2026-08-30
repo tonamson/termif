@@ -104,8 +104,9 @@ The two move at different rates and are shown together by
 
 Termif writes all logs to a file for debugging:
 
-- **macOS:** `~/Library/Application Support/Termif/logs/termif.log`
-- **Windows:** `%APPDATA%\Termif\logs\termif.log`
+- **macOS (dev / packaged):** `~/Library/Application Support/@termif/desktop/logs/termif.log`
+  (packaged `Termif` build uses the same path; if you see `Termif/logs` it is an old install — use `getLogPath()` to confirm)
+- **Windows:** `%APPDATA%\@termif\desktop\logs\termif.log` (`%APPDATA%\Termif\logs\termif.log` on older builds)
 
 The file contains timestamped entries for app start, DB migrations, SSH
 connect/disconnect (host, port, fingerprint, errors), DB exec/transaction,
