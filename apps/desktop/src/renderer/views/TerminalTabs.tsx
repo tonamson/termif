@@ -34,6 +34,17 @@ export function TerminalTabs({ app }: { app: App }) {
     }
   }, [app.sessions, tabStore])
 
+  const handleCloseTab = (tabId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation()
+      e.preventDefault()
+    }
+    // Optimistically close in tabStore so UI is responsive immediately
+    tabStore.close(tabId)
+    // Clean up session in background
+    void app.sessions.closeTab(tabId)
+  }
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const mod = event.metaKey || event.ctrlKey
@@ -45,7 +56,7 @@ export function TerminalTabs({ app }: { app: App }) {
       }
       if (event.key.toLowerCase() === 'w' && activeId !== null) {
         event.preventDefault()
-        void app.sessions.closeTab(activeId)
+        handleCloseTab(activeId)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -97,7 +108,7 @@ export function TerminalTabs({ app }: { app: App }) {
                 type="button"
                 className="terminal-tab__close"
                 aria-label={t('terminal.close', { title: tab.title })}
-                onClick={() => void app.sessions.closeTab(tab.id)}
+                onClick={(e) => handleCloseTab(tab.id, e)}
               >
                 ×
               </button>
