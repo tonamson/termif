@@ -246,7 +246,7 @@ li[data-state='reconnecting'] .host-list__dot { background: var(--warn); }
   gap: var(--space-1);
   padding: var(--space-2) var(--space-2) 0;
   border-bottom: 1px solid var(--border);
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .terminal-tabs__tab {
@@ -386,6 +386,31 @@ li[data-state='reconnecting'] .host-list__dot { background: var(--warn); }
   max-width: 520px;
   padding: var(--space-5);
 }
+
+.menu__backdrop { position: fixed; inset: 0; z-index: var(--z-sheet); }
+.menu {
+  position: fixed;
+  z-index: var(--z-palette);
+  min-width: 180px;
+  padding: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+.menu button {
+  display: flex;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  text-align: start;
+}
+.menu button[data-active='true'] { background: var(--accent); color: var(--accent-fg); }
+.menu button[data-danger='true'] { color: var(--danger); }
+.menu button:disabled { color: var(--fg-subtle); }
+.menu__shortcut { margin-inline-start: auto; color: var(--fg-subtle); }
+.menu__sep { margin: var(--space-1) 0; border: none; border-top: 1px solid var(--border); }
 
 /* --- SFTP --------------------------------------------------------------- */
 .sftp {

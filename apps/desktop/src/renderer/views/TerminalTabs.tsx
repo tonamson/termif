@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { t } from '@termif/core'
 import type { App } from '../state/boot.js'
 import { useStore } from '../state/useStore.js'
 import { TerminalPane } from './TerminalPane.js'
 import { SnippetPalette } from './SnippetPalette.js'
+import { Menu } from './Menu.js'
 
 export function TerminalTabs({ app }: { app: App }) {
   const tabStore = app.tabs
   const { tabs, activeId } = useStore(tabStore)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const bar = useRef<HTMLDivElement>(null)
+  const [visibleCount, setVisibleCount] = useState(tabs.length)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
 
   // Tabs are opened by the connect flow through the session manager, so this
   // component learns about them by listening rather than by being told.
@@ -46,14 +50,30 @@ export function TerminalTabs({ app }: { app: App }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [activeId, app.sessions])
 
+  useEffect(() => {
+    const element = bar.current
+    if (element === null) return
+    const measure = (): void => {
+      const room = Math.max(1, Math.floor((element.clientWidth - 44) / 120))
+      setVisibleCount(room)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  const shown = tabs.slice(0, visibleCount)
+  const hidden = tabs.slice(visibleCount)
+
   if (tabs.length === 0) {
     return <p className="terminal-tabs__empty">{t('terminal.empty')}</p>
   }
 
   return (
     <div className="terminal-tabs">
-      <div role="tablist" className="terminal-tabs__bar">
-        {tabs.map((tab) => (
+      <div ref={bar} role="tablist" className="terminal-tabs__bar">
+        {shown.map((tab) => (
           <div key={tab.id} className={`terminal-tabs__tab terminal-tabs__tab--${tab.state}`}>
             <button
               type="button"
@@ -73,7 +93,30 @@ export function TerminalTabs({ app }: { app: App }) {
             </button>
           </div>
         ))}
+        {hidden.length > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              const rect = (e.target as HTMLElement).getBoundingClientRect()
+              setMenu({ x: rect.left, y: rect.bottom })
+            }}
+          >
+            +{hidden.length}
+          </button>
+        )}
       </div>
+      {menu !== null && (
+        <Menu
+          items={hidden.map((tab) => ({ id: tab.id, label: tab.title }))}
+          x={menu.x}
+          y={menu.y}
+          onPick={(id) => {
+            tabStore.activate(id)
+            setMenu(null)
+          }}
+          onClose={() => setMenu(null)}
+        />
+      )}
 
       {tabs.some((tab) => tab.state === 'reconnecting') && (
         <p role="status" className="terminal-tabs__notice">
