@@ -66,7 +66,7 @@ Ordering rationale: types and interfaces first (Tasks 1–3), then the two piece
 - Produces `SshEvent` as a discriminated union on `kind`.
 - Produces `CoreError` with `code: string`, `parseFfiError(e: unknown): CoreError`.
 
-- [ ] **Step 1: Write the package manifests**
+- [x] **Step 1: Write the package manifests**
 
 `packages/core/package.json`:
 
@@ -132,7 +132,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `packages/core/test/errors.test.ts`:
 
@@ -189,12 +189,12 @@ describe('parseFfiError', () => {
 
 `host_key_unknown` is deliberately not a security block: it is the first-connection prompt, which the user answers. `host_key_mismatch` is the one that blocks (spec §7).
 
-- [ ] **Step 3: Run to see it fail**
+- [x] **Step 3: Run to see it fail**
 
 Run: `cd packages/core && npm install && npx vitest run test/errors.test.ts`
 Expected: FAIL — `src/errors.ts` does not exist.
 
-- [ ] **Step 4: Write the interfaces and errors**
+- [x] **Step 4: Write the interfaces and errors**
 
 `packages/core/src/platform.ts`:
 
@@ -388,17 +388,17 @@ export * from './errors.js'
 export * from './platform.js'
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/errors.test.ts`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 6: Typecheck**
+- [x] **Step 6: Typecheck**
 
 Run: `cd packages/core && npm run typecheck`
 Expected: no output, exit 0.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/core
@@ -418,7 +418,7 @@ git commit -m "feat(core): add platform interfaces and CoreError with FFI code p
 - Produces `t(key: MessageKey, vars?: Record<string, string | number>): string`, `setLocale(locale: string): void`, `availableLocales(): string[]`, `type MessageKey = keyof typeof en`.
 - The catalogue is a flat object so `MessageKey` is a literal union and a typo is a compile error.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/i18n.test.ts`:
 
@@ -462,12 +462,12 @@ describe('t', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/i18n.test.ts`
 Expected: FAIL — no `src/i18n/index.ts`.
 
-- [ ] **Step 3: Write the catalogue and lookup**
+- [x] **Step 3: Write the catalogue and lookup**
 
 `packages/core/src/i18n/en.ts`:
 
@@ -583,12 +583,12 @@ Modify `packages/core/src/index.ts` to add:
 export * from './i18n/index.js'
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/i18n.test.ts`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core
@@ -613,7 +613,7 @@ git commit -m "feat(core): add i18n with an English catalogue and typed message 
 - `SCHEMA_VERSION = 1`
 - `DEFAULT_KDF_PARAMS = { m: 65536, t: 3, p: 1 }`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/model.test.ts`:
 
@@ -742,12 +742,12 @@ describe('newId', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/model.test.ts`
 Expected: FAIL — no `src/model.ts`.
 
-- [ ] **Step 3: Write the model**
+- [x] **Step 3: Write the model**
 
 `packages/core/src/model.ts`:
 
@@ -848,12 +848,12 @@ Modify `packages/core/src/index.ts` to add:
 export * from './model.js'
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/model.test.ts`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core
@@ -883,7 +883,7 @@ git commit -m "feat(core): add model types with zod schemas and id generation"
   - `static async unlockFromDevice(platform, meta): Promise<Vault | null>`
 - Produces `VAULT_CHECK_PLAINTEXT = 'termif-vault-v1'` and `DEVICE_KEY_NAME = 'termif.vaultKey'`.
 
-- [ ] **Step 1: Write the fake secure store**
+- [x] **Step 1: Write the fake secure store**
 
 `packages/core/test/fakes/secureStore.ts`:
 
@@ -912,7 +912,7 @@ export class FakeSecureStore implements SecureStore {
 }
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `packages/core/test/vault.test.ts`:
 
@@ -1056,12 +1056,12 @@ describe('Vault', () => {
 })
 ```
 
-- [ ] **Step 3: Run to see it fail**
+- [x] **Step 3: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/vault.test.ts`
 Expected: FAIL — no `src/vault.ts`.
 
-- [ ] **Step 4: Write the vault**
+- [x] **Step 4: Write the vault**
 
 `packages/core/src/vault.ts`:
 
@@ -1263,17 +1263,17 @@ Modify `packages/core/src/index.ts` to add:
 export * from './vault.js'
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/vault.test.ts`
 Expected: PASS, 12 tests.
 
-- [ ] **Step 6: Verify the whole suite and typecheck**
+- [x] **Step 6: Verify the whole suite and typecheck**
 
 Run: `cd packages/core && npx vitest run && npm run typecheck`
 Expected: PASS, and no type errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/core
@@ -1306,7 +1306,7 @@ git commit -m "feat(core): add vault with Argon2id and XChaCha20-Poly1305"
 
 The `applyRemote` / `upsertHost` split matters: a local edit gets a fresh `updatedAt`, but a row arriving from the sheet must keep the timestamp it was written with, or last-write-wins would drift forward on every pull.
 
-- [ ] **Step 1: Write the fake database**
+- [x] **Step 1: Write the fake database**
 
 `packages/core/test/fakes/db.ts`:
 
@@ -1361,7 +1361,7 @@ Add to `packages/core/package.json` devDependencies:
 "@types/sql.js": "^1.4.9"
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `packages/core/test/store.test.ts`:
 
@@ -1550,12 +1550,12 @@ describe('Store', () => {
 })
 ```
 
-- [ ] **Step 3: Run to see it fail**
+- [x] **Step 3: Run to see it fail**
 
 Run: `cd packages/core && npm install && npx vitest run test/store.test.ts`
 Expected: FAIL — no `src/store.ts`.
 
-- [ ] **Step 4: Write the store**
+- [x] **Step 4: Write the store**
 
 `packages/core/src/store.ts`:
 
@@ -1975,12 +1975,12 @@ Modify `packages/core/src/index.ts` to add:
 export * from './store.js'
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/store.test.ts`
 Expected: PASS, 12 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core
@@ -2005,7 +2005,7 @@ git commit -m "feat(core): add local store with tombstones and change events"
 
 This is the single most bug-prone piece of logic in the plan, which is why it gets a whole task and a case table: both sides edited, one deleted while the other edited, identical timestamps, rows present on only one side.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/merge.test.ts`:
 
@@ -2120,12 +2120,12 @@ describe('tombstoneCutoff', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/merge.test.ts`
 Expected: FAIL — no `src/sheet/merge.ts`.
 
-- [ ] **Step 3: Write the merge**
+- [x] **Step 3: Write the merge**
 
 `packages/core/src/sheet/merge.ts`:
 
@@ -2222,12 +2222,12 @@ export function tombstoneCutoff(nowIso: string, days = 90): string {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/merge.test.ts`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core
@@ -2259,7 +2259,7 @@ git commit -m "feat(core): add last-write-wins row merge with deterministic tie-
   - `async findRowIndexes(spreadsheetId, tab): Promise<Map<string, number>>` — id → 1-based row number
 - `SheetClient` retries `429` and `5xx` with exponential backoff and jitter, and surfaces `CoreError('sheet_quota')` when it gives up (spec §7).
 
-- [ ] **Step 1: Write the fake HTTP client**
+- [x] **Step 1: Write the fake HTTP client**
 
 `packages/core/test/fakes/http.ts`:
 
@@ -2316,7 +2316,7 @@ export const json = (status: number, value: unknown): HttpResponse => ({
 })
 ```
 
-- [ ] **Step 2: Write the failing row-serialisation test**
+- [x] **Step 2: Write the failing row-serialisation test**
 
 `packages/core/test/sheetRows.test.ts`:
 
@@ -2446,12 +2446,12 @@ describe('meta rows', () => {
 })
 ```
 
-- [ ] **Step 3: Run to see it fail**
+- [x] **Step 3: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/sheetRows.test.ts`
 Expected: FAIL — no `src/sheet/rows.ts`.
 
-- [ ] **Step 4: Write the row serialisation**
+- [x] **Step 4: Write the row serialisation**
 
 `packages/core/src/sheet/rows.ts`:
 
@@ -2633,12 +2633,12 @@ export function rowsToMeta(rows: readonly (readonly string[])[]): VaultMeta {
 }
 ```
 
-- [ ] **Step 5: Run the row test to verify it passes**
+- [x] **Step 5: Run the row test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/sheetRows.test.ts`
 Expected: PASS, 13 tests.
 
-- [ ] **Step 6: Write the failing client test**
+- [x] **Step 6: Write the failing client test**
 
 `packages/core/test/sheetClient.test.ts`:
 
@@ -2845,12 +2845,12 @@ describe('SheetClient', () => {
 })
 ```
 
-- [ ] **Step 7: Run to see it fail**
+- [x] **Step 7: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/sheetClient.test.ts`
 Expected: FAIL — no `src/sheet/client.ts`.
 
-- [ ] **Step 8: Write the client**
+- [x] **Step 8: Write the client**
 
 `packages/core/src/sheet/client.ts`:
 
@@ -3077,12 +3077,12 @@ function describe(status: number, body: string): string {
 }
 ```
 
-- [ ] **Step 9: Run the client test to verify it passes**
+- [x] **Step 9: Run the client test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/sheetClient.test.ts`
 Expected: PASS, 16 tests.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add packages/core
@@ -3109,7 +3109,7 @@ git commit -m "feat(core): add sheet row serialisation and REST client with back
   - `type SyncOutcome = { pulled: number; pushed: number; pruned: number }`
 - Never throws from `requestSync`; failures land in `status` so the UI stays usable offline (spec §7).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/sync.test.ts`:
 
@@ -3376,12 +3376,12 @@ describe('SyncEngine', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/sync.test.ts`
 Expected: FAIL — no `src/sync.ts`.
 
-- [ ] **Step 3: Write the sync engine**
+- [x] **Step 3: Write the sync engine**
 
 `packages/core/src/sync.ts`:
 
@@ -3593,17 +3593,17 @@ export * from './sheet/rows.js'
 export * from './sync.js'
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/sync.test.ts`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 5: Run the whole suite and typecheck**
+- [x] **Step 5: Run the whole suite and typecheck**
 
 Run: `cd packages/core && npx vitest run && npm run typecheck`
 Expected: PASS, no type errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core
@@ -3638,7 +3638,7 @@ git commit -m "feat(core): add sync engine with pull, merge, push, and debounce"
   - `type TabId = string`
 - Reconnect: on `sessionClosed` for a session the manager did not close deliberately, retry with backoff, then reopen a channel per tab. Terminal contents are not restored — plain SSH has no resume (spec §6).
 
-- [ ] **Step 1: Write the fake bridge**
+- [x] **Step 1: Write the fake bridge**
 
 `packages/core/test/fakes/ssh.ts`:
 
@@ -3794,7 +3794,7 @@ export class FakeSsh implements SshBridge {
 }
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `packages/core/test/sessions.test.ts`:
 
@@ -4089,12 +4089,12 @@ describe('SessionManager', () => {
 })
 ```
 
-- [ ] **Step 3: Run to see it fail**
+- [x] **Step 3: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/sessions.test.ts`
 Expected: FAIL — no `src/sessions.ts`.
 
-- [ ] **Step 4: Write the session manager**
+- [x] **Step 4: Write the session manager**
 
 `packages/core/src/sessions.ts`:
 
@@ -4454,7 +4454,7 @@ export class SessionManager {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 ```
 
-- [ ] **Step 5: Export it and run the test**
+- [x] **Step 5: Export it and run the test**
 
 Add to `packages/core/src/index.ts`:
 
@@ -4465,7 +4465,7 @@ export * from './sessions.js'
 Run: `cd packages/core && npx vitest run test/sessions.test.ts && npm run typecheck`
 Expected: PASS, 15 tests, no type errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core
@@ -4493,7 +4493,7 @@ git commit -m "feat(core): add session manager with single drain loop and reconn
   - `onChange(listener: () => void): () => void`
 - `maxConcurrent` defaults to 2: more parallel SFTP streams on one session mostly fight each other for the same bandwidth while multiplying memory.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/transfers.test.ts`:
 
@@ -4639,12 +4639,12 @@ describe('TransferManager', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/transfers.test.ts`
 Expected: FAIL — no `src/transfers.ts`.
 
-- [ ] **Step 3: Write the transfer manager**
+- [x] **Step 3: Write the transfer manager**
 
 `packages/core/src/transfers.ts`:
 
@@ -4833,12 +4833,12 @@ Modify `packages/core/src/index.ts` to add:
 export * from './transfers.js'
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/transfers.test.ts`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core
@@ -4883,7 +4883,7 @@ Do not extend this to other platform branching. A nullable field and one small
 pure function are the whole budget; anything larger waits until a mobile shell
 actually exists to exercise it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/forwards.test.ts`:
 
@@ -5042,12 +5042,12 @@ describe('ForwardManager', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd packages/core && npx vitest run test/forwards.test.ts`
 Expected: FAIL — no `src/forwards.ts`.
 
-- [ ] **Step 3: Write the forward manager**
+- [x] **Step 3: Write the forward manager**
 
 `packages/core/src/forwards.ts`:
 
@@ -5300,12 +5300,12 @@ Modify `packages/core/src/index.ts` to add:
 export * from './forwards.js'
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd packages/core && npx vitest run test/forwards.test.ts`
 Expected: PASS, 14 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core
@@ -5340,7 +5340,7 @@ Two things it buys in v1, before any second shell exists:
 `react-native` and its friends stay in the forbidden list. They cannot be
 imported today, so the entry costs nothing and holds the line for spec §11.
 
-- [ ] **Step 1: Write the checker**
+- [x] **Step 1: Write the checker**
 
 `packages/core/scripts/check-purity.mjs`:
 
@@ -5421,12 +5421,12 @@ Add to `packages/core/package.json` scripts:
 "check:purity": "node scripts/check-purity.mjs"
 ```
 
-- [ ] **Step 2: Verify the checker passes on the clean tree**
+- [x] **Step 2: Verify the checker passes on the clean tree**
 
 Run: `cd packages/core && npm run check:purity`
 Expected: `purity check passed: core imports no platform modules`
 
-- [ ] **Step 3: Verify the checker actually catches a violation**
+- [x] **Step 3: Verify the checker actually catches a violation**
 
 Run:
 
@@ -5440,7 +5440,7 @@ npm run check:purity
 
 Expected: the first check prints `src/__purity_probe.ts:1: forbidden import of "node:fs"` and exits 1; after removing the probe, it passes again. A guard that has never failed is not known to work.
 
-- [ ] **Step 4: Write the CI workflow**
+- [x] **Step 4: Write the CI workflow**
 
 `.github/workflows/core.yml`:
 
@@ -5485,7 +5485,7 @@ jobs:
         run: npm run build
 ```
 
-- [ ] **Step 5: Run the full local gate**
+- [x] **Step 5: Run the full local gate**
 
 Run:
 
@@ -5496,7 +5496,7 @@ npm run check:purity && npm run typecheck && npm test && npm run build
 
 Expected: all four pass. If `npm ci` in CI needs a lockfile, commit `packages/core/package-lock.json` produced by the earlier `npm install`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core .github/workflows/core.yml
