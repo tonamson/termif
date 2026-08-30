@@ -1,5 +1,10 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
+import { openDatabase } from './db.js'
+import { createSecureStore } from './secureStore.js'
+import { GoogleAuth } from './googleAuth.js'
+import { registerHandlers } from './handlers.js'
+import { request } from './net.js'
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -37,11 +42,28 @@ function createWindow(): BrowserWindow {
 }
 
 void app.whenReady().then(() => {
+  const userData = app.getPath('userData')
+  const db = openDatabase(join(userData, 'termif.sqlite'))
+  const secureStore = createSecureStore(join(userData, 'secure.json'))
+
+  const auth = new GoogleAuth({
+    // Injected at build time; a desktop OAuth client secret is not a secret in
+    // the cryptographic sense, which is why the device flow exists.
+    clientId: process.env.TERMIF_GOOGLE_CLIENT_ID ?? '',
+    clientSecret: process.env.TERMIF_GOOGLE_CLIENT_SECRET ?? '',
+    store: secureStore,
+    request,
+    now: () => Date.now(),
+  })
+
+  registerHandlers({ db, secureStore, auth })
   createWindow()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+
+  app.on('will-quit', () => db.close())
 })
 
 app.on('window-all-closed', () => {
