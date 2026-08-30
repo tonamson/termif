@@ -22,6 +22,14 @@ export function MainLayout({ app }: { app: App }) {
   const [editing, setEditing] = useState<{ id: string | null } | null>(null)
 
   const connect = useConnectFlow(app, hostStore)
+  const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (connect.lastError === null) return
+    setToast(connect.lastError)
+    const id = window.setTimeout(() => setToast(null), 3500)
+    return () => window.clearTimeout(id)
+  }, [connect.lastError])
 
   useEffect(() => {
     void hostStore.refresh()
@@ -136,6 +144,13 @@ export function MainLayout({ app }: { app: App }) {
         )}
       </div>
       {connect.prompt}
+      {toast !== null && (
+        <div className="toast-stack" aria-live="polite">
+          <div role="alert" className="toast" data-variant="error">
+            {toast}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

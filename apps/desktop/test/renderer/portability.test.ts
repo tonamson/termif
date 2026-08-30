@@ -41,7 +41,11 @@ async function makeFilePlatform(dir: string) {
   const SQL = await initSqlJs()
   const path = join(dir, 'termif.sqlite')
   const raw = existsSync(path) ? new SQL.Database(readFileSync(path)) : new SQL.Database()
+  // sql.js export() closes and reopens the database, which rolls back any open
+  // transaction — so never flush while one is in flight.
+  let inTx = false
   const flush = () => {
+    if (inTx) return
     const data = raw.export()
     writeFileSync(path, Buffer.from(data))
   }
@@ -53,8 +57,10 @@ async function makeFilePlatform(dir: string) {
       } finally {
         stmt.free()
       }
+      if (/^\s*BEGIN/i.test(sql)) inTx = true
+      else if (/^\s*(COMMIT|ROLLBACK)/i.test(sql)) inTx = false
       // keep file in sync for copy simulation — cheap for tests
-      if (/^\s*(CREATE|INSERT|UPDATE|DELETE|DROP)/i.test(sql)) flush()
+      if (/^\s*(CREATE|INSERT|UPDATE|DELETE|DROP|COMMIT)/i.test(sql)) flush()
     },
     query: async <T,>(sql: string, params: readonly SqlValue[] = []): Promise<T[]> => {
       const stmt = raw.prepare(sql)
@@ -66,13 +72,16 @@ async function makeFilePlatform(dir: string) {
     },
     transaction: async <T,>(fn: () => Promise<T>): Promise<T> => {
       raw.run('BEGIN')
+      inTx = true
       try {
         const result = await fn()
         raw.run('COMMIT')
+        inTx = false
         flush()
         return result
       } catch (e) {
         raw.run('ROLLBACK')
+        inTx = false
         throw e
       }
     },

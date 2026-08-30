@@ -564,3 +564,37 @@ li[data-state='reconnecting'] .host-list__dot { background: var(--warn); }
   color: var(--warn);
   font-size: 12px;
 }
+
+/* Toast: transient, non-blocking, replaces inline lastError */
+.toast-stack {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: var(--z-palette);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+.toast {
+  min-width: 240px;
+  max-width: 420px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-overlay);
+  color: var(--fg);
+  box-shadow: var(--shadow-overlay);
+  pointer-events: auto;
+  animation: toast-in 180ms ease;
+}
+.toast[data-variant='error'] {
+  border-color: var(--danger);
+}
+.toast[data-variant='info'] {
+  border-color: var(--border-strong);
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

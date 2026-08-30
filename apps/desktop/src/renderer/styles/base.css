@@ -137,6 +137,17 @@ textarea:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
+/* Select/datalist options must match dark surface; otherwise the
+   popup renders light text on light or dark on dark and the host
+   picker looks empty. */
+select,
+select option,
+optgroup,
+datalist option {
+  background: var(--bg-raised);
+  color: var(--fg);
+}
+
 label {
   display: flex;
   flex-direction: column;
