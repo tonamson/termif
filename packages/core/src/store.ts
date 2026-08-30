@@ -1,6 +1,7 @@
 import {
   hostSchema,
   newId,
+  SCHEMA_VERSION,
   snippetSchema,
   storedCredentialSchema,
   type Host,
@@ -8,6 +9,8 @@ import {
   type StoredCredential,
 } from './model.js'
 import type { LocalDb, Platform, SqlValue } from './platform.js'
+
+const STALE_META_KEYS = ['kdfSalt', 'kdfParams', 'vaultCheck', 'spreadsheetId']
 
 export type RowKind = 'hosts' | 'credentials' | 'snippets'
 type ChangeListener = (kind: RowKind) => void
@@ -35,13 +38,13 @@ const MIGRATIONS = [
      deleted INTEGER NOT NULL DEFAULT 0
    )`,
   `CREATE TABLE IF NOT EXISTS credentials (
-     id TEXT PRIMARY KEY,
-     label TEXT NOT NULL,
-     kind TEXT NOT NULL,
-     cipher TEXT NOT NULL,
-     updated_at TEXT NOT NULL,
-     deleted INTEGER NOT NULL DEFAULT 0
-   )`,
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      secret TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted INTEGER NOT NULL DEFAULT 0
+    )`,
   `CREATE TABLE IF NOT EXISTS snippets (
      id TEXT PRIMARY KEY,
      label TEXT NOT NULL,
@@ -76,6 +79,29 @@ export class Store {
   static async open(platform: StorePlatform): Promise<Store> {
     for (const sql of MIGRATIONS) {
       await platform.db.exec(sql)
+    }
+    const current = await platform.db.query<{ value: string }>(
+      'SELECT value FROM meta WHERE key = ?',
+      ['schemaVersion'],
+    )
+    const version = current[0]?.value ?? null
+    if (version === null) {
+      await platform.db.exec(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['schemaVersion', String(SCHEMA_VERSION)],
+      )
+    } else if (version === '1') {
+      await platform.db.exec('DROP TABLE IF EXISTS credentials')
+      // MIGRATIONS[1] is the credentials CREATE with `secret`; index 4 is credentials_updated_at
+      await platform.db.exec(MIGRATIONS[1])
+      await platform.db.exec(MIGRATIONS[5])
+      for (const k of STALE_META_KEYS) {
+        await platform.db.exec('DELETE FROM meta WHERE key = ?', [k])
+      }
+      await platform.db.exec(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['schemaVersion', String(SCHEMA_VERSION)],
+      )
     }
     return new Store(platform.db, platform.now)
   }
@@ -193,11 +219,11 @@ export class Store {
 
   async #writeCredential(c: StoredCredential): Promise<void> {
     await this.#db.exec(
-      `INSERT INTO credentials (id, label, kind, cipher, updated_at, deleted)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         label = excluded.label, kind = excluded.kind, cipher = excluded.cipher,
-         updated_at = excluded.updated_at, deleted = excluded.deleted`,
+      `INSERT INTO credentials (id, label, kind, secret, updated_at, deleted)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          label = excluded.label, kind = excluded.kind, secret = excluded.secret,
+          updated_at = excluded.updated_at, deleted = excluded.deleted`,
       [c.id, c.label, c.kind, c.secret, c.updatedAt, c.deleted ? 1 : 0],
     )
   }
@@ -344,7 +370,7 @@ interface CredentialRow {
   id: string
   label: string
   kind: string
-  cipher: string
+  secret: string
   updated_at: string
   deleted: number
 }
@@ -387,7 +413,7 @@ function toCredential(row: CredentialRow): StoredCredential {
     id: row.id,
     label: row.label,
     kind: row.kind,
-    secret: row.cipher,
+    secret: row.secret,
     updatedAt: row.updated_at,
     deleted: row.deleted === 1,
   })
