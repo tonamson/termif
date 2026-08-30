@@ -1,3 +1,4 @@
+import { Icon } from "../components/Icon"
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { t } from '@termif/core'
 import type { Host, HostConnectionState } from '@termif/core'
@@ -123,7 +124,7 @@ export function HostList({
                             title={t('host.editShort')}
                             onClick={() => onEdit(host.id)}
                           >
-                            <span aria-hidden="true">✎</span>
+                            <span aria-hidden="true"><Icon name="edit" size={16} /></span>
                           </button>
                           {confirming === host.id ? (
                             <>
