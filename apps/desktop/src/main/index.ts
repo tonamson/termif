@@ -14,6 +14,20 @@ function createWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     title: 'Termif',
+    // Frameless on both platforms: the renderer draws its own titlebar
+    // (src/renderer/views/Titlebar.tsx). The OS bar is a light strip across a
+    // dark window otherwise.
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset' as const }
+      : {
+          titleBarStyle: 'hidden' as const,
+          titleBarOverlay: {
+            color: '#12171f',
+            symbolColor: '#a7b3c0',
+            height: 38,
+          },
+        }),
+    backgroundColor: '#0d1117',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // The renderer gets no Node and no direct ipcRenderer: everything goes

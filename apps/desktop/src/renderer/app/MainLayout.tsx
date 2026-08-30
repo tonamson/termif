@@ -11,9 +11,8 @@ import { SignInScreen } from '../views/SignInScreen.js'
 import { TerminalTabs } from '../views/TerminalTabs.js'
 import { SftpBrowser } from '../views/SftpBrowser.js'
 import { ForwardPanel } from '../views/ForwardPanel.js'
+import { Titlebar, type Pane } from '../views/Titlebar.js'
 import { useConnectFlow } from '../state/connectFlow.js'
-
-type Pane = 'terminals' | 'files' | 'forwards'
 
 export function MainLayout({ app }: { app: App }) {
   // Created once per mount and kept: recreating it would drop the loaded list.
@@ -49,8 +48,10 @@ export function MainLayout({ app }: { app: App }) {
     editing?.id == null ? null : (hosts.hosts.find((h) => h.id === editing.id) ?? null)
 
   return (
-    <div className="layout">
-      <aside className="layout__sidebar">
+    <div className="shell">
+      <Titlebar pane={pane} onPaneChange={setPane} />
+      <div className="layout">
+        <aside className="layout__sidebar">
         {hasSync ? (
           <SyncBadge status={syncStatus} onSyncNow={() => void app.sync?.syncNow()} />
         ) : (
@@ -82,20 +83,6 @@ export function MainLayout({ app }: { app: App }) {
       </aside>
 
       <main className="layout__main">
-        <nav className="layout__tabs" role="tablist">
-          {(['terminals', 'files', 'forwards'] as const).map((name) => (
-            <button
-              key={name}
-              type="button"
-              role="tab"
-              aria-selected={pane === name}
-              onClick={() => setPane(name)}
-            >
-              {t(`layout.tab.${name}`)}
-            </button>
-          ))}
-        </nav>
-
         {editing !== null ? (
           <HostForm
             host={editingHost}
@@ -113,7 +100,7 @@ export function MainLayout({ app }: { app: App }) {
           <ForwardPanel app={app} />
         )}
       </main>
-
+      </div>
       {connect.prompt}
     </div>
   )
