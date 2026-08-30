@@ -45,7 +45,9 @@ export function TerminalTabs({ app }: { app: App }) {
       }
       if (event.key.toLowerCase() === 'w' && activeId !== null) {
         event.preventDefault()
-        void app.sessions.closeTab(activeId)
+        const targetId = activeId
+        tabStore.close(targetId)
+        void app.sessions.closeTab(targetId)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -91,7 +93,10 @@ export function TerminalTabs({ app }: { app: App }) {
             <button
               type="button"
               aria-label={t('terminal.close', { title: tab.title })}
-              onClick={() => void app.sessions.closeTab(tab.id)}
+              onClick={() => {
+                tabStore.close(tab.id)
+                void app.sessions.closeTab(tab.id)
+              }}
             >
               ×
             </button>
