@@ -1,7 +1,32 @@
+/**
+ * Changing the schema
+ * -------------------
+ * 1. Append one entry to `MIGRATIONS` — one `string[]` per migration.
+ *    Never edit or reorder a shipped entry; a correction ships as a new entry.
+ * 2. Never bump a version by hand — `SCHEMA_VERSION = MIGRATIONS.length` derives it.
+ *    The release version in `apps/desktop/package.json` is deliberately unrelated;
+ *    most releases change no schema.
+ * 3. Simple shape: `ALTER TABLE … ADD COLUMN`, `RENAME COLUMN`, `DROP COLUMN`.
+ * 4. Anything else: table rewrite (create new, INSERT…SELECT with transform, drop,
+ *    rename, recreate indexes/triggers which DROP TABLE removes). Example:
+ *    ```ts
+ *    [
+ *      `CREATE TABLE scratch_new (id TEXT PRIMARY KEY, val TEXT NOT NULL)`,
+ *      `INSERT INTO scratch_new (id, val) SELECT id, UPPER(val) FROM scratch`,
+ *      `DROP TABLE scratch`,
+ *      `ALTER TABLE scratch_new RENAME TO scratch`,
+ *      `CREATE INDEX IF NOT EXISTS scratch_idx ON scratch (val)`,
+ *    ]
+ *    ```
+ *    When SQL cannot express the transform, the entry can be a function run
+ *    inside the same BEGIN/COMMIT that writes `PRAGMA user_version`.
+ * 5. Test: open a DB at the previous `user_version`, assert rows survive the
+ *    migration and indexes exist afterwards.
+ */
+
 import {
   hostSchema,
   newId,
-  SCHEMA_VERSION,
   snippetSchema,
   storedCredentialSchema,
   type Host,
@@ -17,20 +42,69 @@ export async function columnsOf(db: LocalDb, table: string): Promise<Set<string>
   return new Set(rows.map((r) => r.name))
 }
 
-async function repairCredentials(db: LocalDb): Promise<void> {
+export async function getUserVersion(db: LocalDb): Promise<number> {
+  const rows = await db.query<Record<string, SqlValue>>(`PRAGMA user_version`)
+  if (rows.length === 0) return 0
+  const v = Object.values(rows[0]!)[0]
+  return typeof v === 'number' ? v : Number(v ?? 0)
+}
+
+export async function adopt(db: LocalDb): Promise<void> {
+  const v = await getUserVersion(db)
+  if (v !== 0) return
   const cols = await columnsOf(db, 'credentials')
-  if (cols.size === 0 || !cols.has('secret')) {
+  if (cols.size === 0) {
+    // fresh DB — runner will create everything
+  } else if (!cols.has('secret')) {
+    // vault-era: cipher table, cannot migrate ciphertext
     await db.exec(`DROP TABLE IF EXISTS credentials`)
-    await db.exec(MIGRATIONS[1]!)
-    await db.exec(MIGRATIONS[6]!)
-    await db.exec(`ALTER TABLE credentials ADD COLUMN passphrase TEXT`).catch(() => {})
+    await db.exec(
+      `CREATE TABLE IF NOT EXISTS credentials (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        secret TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0
+      )`,
+    )
+    await db.exec(`CREATE INDEX IF NOT EXISTS credentials_updated_at ON credentials (updated_at)`)
+    await db.exec(`ALTER TABLE credentials ADD COLUMN passphrase TEXT`)
     for (const k of [...STALE_META_KEYS, 'vaultMeta']) {
-      await db.exec(`DELETE FROM meta WHERE key = ?`, [k])
+      try {
+        await db.exec(`DELETE FROM meta WHERE key = ?`, [k])
+      } catch {}
     }
+    try {
+      await db.exec(`DELETE FROM meta WHERE key = ?`, ['schemaVersion'])
+    } catch {}
+    await db.exec(`PRAGMA user_version = 2`)
     return
+  } else if (cols.has('secret') && cols.has('passphrase')) {
+    await db.exec(`PRAGMA user_version = 2`)
+  } else if (cols.has('secret')) {
+    await db.exec(`PRAGMA user_version = 1`)
   }
-  if (!cols.has('passphrase')) {
-    await db.exec(`ALTER TABLE credentials ADD COLUMN passphrase TEXT`).catch(() => {})
+  try {
+    await db.exec(`DELETE FROM meta WHERE key = ?`, ['schemaVersion'])
+  } catch {}
+}
+
+export async function runMigrations(db: LocalDb): Promise<void> {
+  let version = await getUserVersion(db)
+  for (let i = version; i < MIGRATIONS.length; i++) {
+    const stmts = MIGRATIONS[i]!
+    await db.exec('BEGIN')
+    try {
+      for (const sql of stmts) await db.exec(sql)
+      await db.exec(`PRAGMA user_version = ${i + 1}`)
+      await db.exec('COMMIT')
+    } catch (e) {
+      try {
+        await db.exec('ROLLBACK')
+      } catch {}
+      throw e
+    }
   }
 }
 
@@ -56,8 +130,9 @@ export type KnownHost = {
 }
 export type KnownHostInput = Omit<KnownHost, 'addedAt'> & { addedAt?: string }
 
-const MIGRATIONS = [
-  `CREATE TABLE IF NOT EXISTS hosts (
+export const MIGRATIONS: string[][] = [
+  [
+    `CREATE TABLE IF NOT EXISTS hosts (
      id TEXT PRIMARY KEY,
      label TEXT NOT NULL,
      hostname TEXT NOT NULL,
@@ -69,7 +144,7 @@ const MIGRATIONS = [
      updated_at TEXT NOT NULL,
      deleted INTEGER NOT NULL DEFAULT 0
    )`,
-  `CREATE TABLE IF NOT EXISTS credentials (
+    `CREATE TABLE IF NOT EXISTS credentials (
       id TEXT PRIMARY KEY,
       label TEXT NOT NULL,
       kind TEXT NOT NULL,
@@ -77,7 +152,7 @@ const MIGRATIONS = [
       updated_at TEXT NOT NULL,
       deleted INTEGER NOT NULL DEFAULT 0
     )`,
-  `CREATE TABLE IF NOT EXISTS snippets (
+    `CREATE TABLE IF NOT EXISTS snippets (
      id TEXT PRIMARY KEY,
      label TEXT NOT NULL,
      body TEXT NOT NULL,
@@ -85,7 +160,7 @@ const MIGRATIONS = [
      updated_at TEXT NOT NULL,
      deleted INTEGER NOT NULL DEFAULT 0
    )`,
-   `CREATE TABLE IF NOT EXISTS known_hosts (
+    `CREATE TABLE IF NOT EXISTS known_hosts (
       host TEXT NOT NULL,
       port INTEGER NOT NULL,
       algo TEXT NOT NULL,
@@ -93,14 +168,18 @@ const MIGRATIONS = [
       added_at TEXT NOT NULL,
       PRIMARY KEY (host, port, algo)
     )`,
-   `CREATE TABLE IF NOT EXISTS meta (
+    `CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     )`,
-  `CREATE INDEX IF NOT EXISTS hosts_updated_at ON hosts (updated_at)`,
-  `CREATE INDEX IF NOT EXISTS credentials_updated_at ON credentials (updated_at)`,
-  `CREATE INDEX IF NOT EXISTS snippets_updated_at ON snippets (updated_at)`,
+    `CREATE INDEX IF NOT EXISTS hosts_updated_at ON hosts (updated_at)`,
+    `CREATE INDEX IF NOT EXISTS credentials_updated_at ON credentials (updated_at)`,
+    `CREATE INDEX IF NOT EXISTS snippets_updated_at ON snippets (updated_at)`,
+  ],
+  [`ALTER TABLE credentials ADD COLUMN passphrase TEXT`],
 ]
+
+export const SCHEMA_VERSION = MIGRATIONS.length
 
 /**
  * The local database is the read source for the whole app; the Sheet is only
@@ -117,14 +196,8 @@ export class Store {
   }
 
   static async open(platform: StorePlatform): Promise<Store> {
-    for (const sql of MIGRATIONS) {
-      await platform.db.exec(sql)
-    }
-    await repairCredentials(platform.db)
-    await platform.db.exec(
-      'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-      ['schemaVersion', String(SCHEMA_VERSION)],
-    )
+    await adopt(platform.db)
+    await runMigrations(platform.db)
     return new Store(platform.db, platform.now)
   }
 

@@ -1,5 +1,5 @@
-import { dialog, ipcMain, shell } from 'electron'
-import type { SqlValue } from '@termif/core'
+import { app, dialog, ipcMain, shell } from 'electron'
+import { SCHEMA_VERSION, type SqlValue } from '@termif/core'
 import { CHANNELS, type DbStatement, type SerialisedDirEntry } from '../shared/ipc.js'
 import type { DesktopDb } from './db.js'
 import { initNative, native, serialiseDirEntry, serialiseEvents } from './native.js'
@@ -45,6 +45,7 @@ export function handlerNames(): string[] {
     CHANNELS.appPickSaveLocation,
     CHANNELS.appOpenExternal,
     CHANNELS.appPlatformKind,
+    CHANNELS.appGetVersions,
   ]
 }
 
@@ -192,4 +193,11 @@ export function registerHandlers(deps: HandlerDeps): void {
     await shell.openExternal(url)
   })
   ipcMain.handle(CHANNELS.appPlatformKind, () => 'desktop' as const)
+  ipcMain.handle(CHANNELS.appGetVersions, async () => {
+    const rows = await deps.db.query<{ user_version: number }>('PRAGMA user_version')
+    const userVersion = (rows[0] as Record<string, number> | undefined)
+      ? Number(Object.values(rows[0]!)[0] ?? 0)
+      : 0
+    return { appVersion: app.getVersion(), schemaVersion: SCHEMA_VERSION, userVersion }
+  })
 }

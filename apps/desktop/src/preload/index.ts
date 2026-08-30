@@ -54,6 +54,7 @@ const api: TermifApi = {
         return ''
       }
     },
+    getVersions: () => ipcRenderer.invoke(CHANNELS.appGetVersions),
   },
 }
 

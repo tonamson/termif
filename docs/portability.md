@@ -55,3 +55,47 @@ the OS account password.
 
 Losing the file loses everything. There is no server-side copy. Two machines
 editing two copies diverge silently; the last file copied wins.
+
+## Changing the schema
+
+All schema changes live in `packages/core/src/store.ts` as `MIGRATIONS: string[][]`
+— one inner array per migration, append-only. Never edit or reorder a shipped
+entry; a correction ships as a new entry.
+
+- `SCHEMA_VERSION = MIGRATIONS.length` — never bump a version by hand.
+- `PRAGMA user_version` is the only version stored in a DB file; the old
+  `meta.schemaVersion` row is deleted on adoption.
+- The release version in `apps/desktop/package.json` is deliberately unrelated;
+  most releases change no schema and must not force empty migrations.
+- Simple step: `ALTER TABLE … ADD COLUMN` / `RENAME COLUMN` / `DROP COLUMN`.
+- Complex step (type change, new `NOT NULL`, PK change): table rewrite:
+
+  ```ts
+  [
+    `CREATE TABLE t_new (id TEXT PRIMARY KEY, val TEXT NOT NULL)`,
+    `INSERT INTO t_new (id, val) SELECT id, UPPER(val) FROM t`,
+    `DROP TABLE t`,
+    `ALTER TABLE t_new RENAME TO t`,
+    `CREATE INDEX IF NOT EXISTS t_idx ON t (val)`,
+  ]
+  ```
+
+  Recreate every index/trigger after `DROP TABLE` — they are removed with it.
+  When SQL cannot express the transform, the entry is a function run inside
+  the same `BEGIN`/`COMMIT` that writes the new `user_version`.
+
+Each migration runs in its own `BEGIN`/`COMMIT` that also writes
+`PRAGMA user_version = n+1`; a failure rolls back and the error propagates
+out of `Store.open` — no `.catch(() => {})`.
+
+## Diagnostics for bug reports
+
+A bug report should include both:
+
+- the app release version (`apps/desktop/package.json` / `app.getVersion()`,
+  e.g. `0.1.0`), and
+- the DB schema version (`PRAGMA user_version`, exposed as `SCHEMA_VERSION`
+  in code and via `window.termif.app.getVersions()`).
+
+The two move at different rates and are shown together by
+`termif:app:getVersions` (main) / `window.termif.app.getVersions()` (renderer).

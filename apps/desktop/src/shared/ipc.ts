@@ -37,6 +37,7 @@ export const CHANNELS = Object.freeze({
   appPickSaveLocation: 'termif:app:pickSaveLocation',
   appOpenExternal: 'termif:app:openExternal',
   appPlatformKind: 'termif:app:platformKind',
+  appGetVersions: 'termif:app:getVersions',
 } as const)
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS]
@@ -99,6 +100,7 @@ export interface TermifApi {
     openExternal(url: string): Promise<void>
     platformKind(): Promise<'desktop'>
     pathForDroppedFile(file: File): string
+    getVersions(): Promise<{ appVersion: string; schemaVersion: number; userVersion: number }>
   }
 }
 

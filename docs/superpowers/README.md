@@ -33,6 +33,7 @@ not "not written yet" — it is out of v1 scope.
 | 7 | [`plans/2026-08-30-termif-07-live-acceptance.md`](plans/2026-08-30-termif-07-live-acceptance.md) — live acceptance: real server, packaged `.dmg` | 3 layers | not started, blocked by 6 | — |
 | 8 | [`plans/2026-08-30-termif-08-desktop-layout.md`](plans/2026-08-30-termif-08-desktop-layout.md) — layout: drawer, inspector, SFTP menus, layout tests | 15 | **complete (2026-08-30)** — 255 desktop tests green (83 core), drawer + resizable sidebar + grouping + tab overflow + passphrase + inspector/sheet + hostile fixture | — |
 | 9 | [`plans/2026-08-30-termif-09-store-shape-migration.md`](plans/2026-08-30-termif-09-store-shape-migration.md) — repair credentials table by shape, not version | 6 | **complete (2026-08-30)** — 21 core tests green, vault-era DB repaired, passphrase column ensured | — |
+| 10 | [`plans/2026-08-30-termif-10-schema-versioning.md`](plans/2026-08-30-termif-10-schema-versioning.md) — numbered migration runner on `PRAGMA user_version` | 6 | **complete (2026-08-30)** — MIGRATIONS is string[][], SCHEMA_VERSION derived, adopt+runMigrations, vault repair preserved, 89 core tests green, rewrite pattern proven, docs + diagnostics | — |
 
 Plans 6 and 7 were added on 2026-08-30 and run last. Plan 6 removes the
 encryption and sync layers; Plan 7 then verifies what remains against a real
