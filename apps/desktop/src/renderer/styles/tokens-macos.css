@@ -1,0 +1,7 @@
+:root {
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --row-height: 40px;
+  --accent: #4c8dff;
+  --sidebar-bg: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+}

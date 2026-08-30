@@ -10,6 +10,7 @@ import { SftpBrowser } from '../views/SftpBrowser.js'
 import { ForwardPanel } from '../views/ForwardPanel.js'
 import { Titlebar } from '../views/Titlebar.js'
 import { Drawer } from '../views/Drawer.js'
+import { Inspector } from '../views/Inspector.js'
 import { useConnectFlow } from '../state/connectFlow.js'
 import { t } from '@termif/core'
 
@@ -52,6 +53,9 @@ export function MainLayout({ app }: { app: App }) {
   const editingHost =
     editing?.id == null ? null : (hosts.hosts.find((h) => h.id === editing.id) ?? null)
 
+  const selectedHost = hosts.hosts.find((h) => h.id === hosts.hosts[0]?.id) ?? hosts.hosts[0] ?? null
+  const allGroups = [...new Set(hosts.hosts.map((h) => h.groupId).filter((g): g is string => g !== null && g !== ''))]
+
   return (
     <div className="shell">
       <Titlebar
@@ -60,7 +64,11 @@ export function MainLayout({ app }: { app: App }) {
         inspectorOpen={prefs.inspectorOpen}
         onInspector={(open) => app.prefs.set('inspectorOpen', open)}
       />
-      <div className="layout" style={{ ['--sidebar-w' as string]: `${prefs.sidebarWidth}px` }}>
+      <div
+        className="layout"
+        data-inspector={prefs.inspectorOpen ? 'open' : 'closed'}
+        style={{ ['--sidebar-w' as string]: `${prefs.sidebarWidth}px` }}
+      >
         <aside className="layout__sidebar">
           <HostList
             hosts={hostStore.visibleHosts()}
@@ -110,6 +118,20 @@ export function MainLayout({ app }: { app: App }) {
             </>
           )}
         </main>
+        {prefs.inspectorOpen && (
+          <aside className="inspector">
+            <Inspector
+              host={selectedHost}
+              credential={null}
+              groups={allGroups}
+              onSave={(input, secret) => hostStore.save(input, secret)}
+              onPickKeyFile={async () => {
+                const p = await (window as any).termif?.app?.pickFile?.()
+                return p ?? null
+              }}
+            />
+          </aside>
+        )}
       </div>
       {connect.prompt}
     </div>

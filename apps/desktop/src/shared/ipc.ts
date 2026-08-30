@@ -98,6 +98,7 @@ export interface TermifApi {
     pickSaveLocation(suggestedName: string): Promise<string | null>
     openExternal(url: string): Promise<void>
     platformKind(): Promise<'desktop'>
+    pathForDroppedFile(file: File): string
   }
 }
 

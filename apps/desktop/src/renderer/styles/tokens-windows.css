@@ -1,0 +1,7 @@
+:root {
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --row-height: 36px;
+  --accent: #4cc2ff;
+  --sidebar-bg: var(--bg-surface);
+}

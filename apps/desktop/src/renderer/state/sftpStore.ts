@@ -33,6 +33,15 @@ export interface SftpStore extends Observable<SftpState> {
   remove(name: string, recursive: boolean): Promise<void>
 }
 
+export function visibleEntries(entries: readonly SshDirEntry[], showHidden: boolean): SshDirEntry[] {
+  if (showHidden) return [...entries]
+  return entries.filter((entry) => entry.name === '..' || !entry.name.startsWith('.'))
+}
+
+export function hiddenCount(entries: readonly SshDirEntry[]): number {
+  return entries.filter((entry) => entry.name !== '..' && entry.name.startsWith('.')).length
+}
+
 export function createSftpStore(deps: { ssh: SshBridge; sessionId: bigint }): SftpStore {
   const base = createStore<SftpState>({ path: '.', entries: [], loading: false, error: null })
 

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { CHANNELS, type TermifApi } from '../shared/ipc.js'
 
 /**
@@ -47,6 +47,13 @@ const api: TermifApi = {
     pickSaveLocation: (name) => ipcRenderer.invoke(CHANNELS.appPickSaveLocation, name),
     openExternal: (url) => ipcRenderer.invoke(CHANNELS.appOpenExternal, url),
     platformKind: () => ipcRenderer.invoke(CHANNELS.appPlatformKind),
+    pathForDroppedFile: (file: File): string => {
+      try {
+        return webUtils.getPathForFile(file)
+      } catch {
+        return ''
+      }
+    },
   },
 }
 
