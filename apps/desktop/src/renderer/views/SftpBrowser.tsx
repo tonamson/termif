@@ -1,3 +1,4 @@
+import { Icon } from '../components/Icon'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { t, type SshDirEntry, type TransferView } from '@termif/core'
 import type { App } from '../state/boot.js'
@@ -131,7 +132,7 @@ export function SftpBrowserView({
             }}
             onDoubleClick={() => entry.isDir && onOpen(join(path, entry.name))}
           >
-            <span className="sftp__icon">{entry.isDir ? '📁' : '📄'}</span>
+            <span className="sftp__icon"><Icon name={entry.isDir ? "folder" : "description"} size={16} /></span>
             <span className="sftp__name u-clip">{entry.name}</span>
 
             {/* A directory's byte size means nothing to a user, so omit it. */}

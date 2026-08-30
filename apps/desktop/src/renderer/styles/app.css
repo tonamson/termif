@@ -1,3 +1,28 @@
+
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 100 700;
+  src: local("Material Symbols Outlined"), local("MaterialSymbolsOutlined-Regular"),
+       url("../assets/fonts/material-symbols-outlined.woff2") format("woff2");
+  font-display: block;
+}
+
+.icon-symbol {
+  font-family: "Material Symbols Outlined", sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  user-select: none;
+  vertical-align: middle;
+}
+
 @import './tokens.css';
 @import './base.css';
 

@@ -1,3 +1,4 @@
+import { Icon } from '../components/Icon'
 import { useEffect, useRef, useState } from 'react'
 import { t } from '@termif/core'
 import type { App } from '../state/boot.js'
