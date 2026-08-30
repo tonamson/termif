@@ -4,3 +4,6 @@
 target/
 *.node
 .worktrees/
+
+node_modules/
+dist/
