@@ -70,6 +70,7 @@ export const en = {
   'host.search': 'Search hosts',
   'host.add': 'Add host',
   'host.connect': 'Connect',
+  'connect.noCredential': 'This host has no stored credential. Edit it to add one.',
   'host.edit': 'Edit {label}',
   'host.delete': 'Delete {label}',
   'host.confirmDelete': 'Confirm delete',
