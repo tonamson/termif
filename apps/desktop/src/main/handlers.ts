@@ -66,6 +66,11 @@ export function registerHandlers(deps: HandlerDeps): void {
     CHANNELS.sshTrustHostKey,
     async (_e, host: string, port: number, algo: string, fingerprint: string) => {
       await native().trustHostKey(host, port, algo, fingerprint)
+      await deps.db.exec(
+        `INSERT INTO known_hosts (host, port, algo, key, added_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(host, port, algo) DO UPDATE SET key = excluded.key, added_at = excluded.added_at`,
+        [host, port, algo, fingerprint, new Date().toISOString()],
+      )
     },
   )
   ipcMain.handle(CHANNELS.sshOpenShell, async (_e, sessionId: string, cols: number, rows: number) =>

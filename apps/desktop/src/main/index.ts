@@ -2,6 +2,8 @@ import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
 import { openDatabase } from './db.js'
 import { registerHandlers } from './handlers.js'
+import { prepareKnownHosts } from './knownHosts.js'
+import { initNative } from './native.js'
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -52,10 +54,11 @@ function createWindow(): BrowserWindow {
   return window
 }
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
   const userData = app.getPath('userData')
   const db = openDatabase(join(userData, 'termif.sqlite'))
 
+  await prepareKnownHosts(db, userData, initNative)
   registerHandlers({ db })
   createWindow()
 

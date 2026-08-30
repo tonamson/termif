@@ -15,12 +15,16 @@ const persisted = new Map<string, Map<string, Table>>()
 
 function cloneTables(src: Map<string, Table>): Map<string, Table> {
   const out = new Map<string, Table>()
-  for (const [k, v] of src)
-    out.set(k, {
+  for (const [k, v] of src) {
+    const cloned: Table & Record<string, unknown> = {
       columns: [...v.columns],
       ...(v.primaryKey !== undefined ? { primaryKey: v.primaryKey } : {}),
       rows: v.rows.map((r) => ({ ...r })),
-    } as Table)
+    } as unknown as Table & Record<string, unknown>
+    const ck = (v as unknown as Record<string, unknown>).compositeKeys
+    if (ck) cloned.compositeKeys = [...(ck as string[])]
+    out.set(k, cloned as Table)
+  }
   return out
 }
 
@@ -94,13 +98,26 @@ class MockDatabase {
 
   runSql(sql: string, params: unknown[]): unknown {
     const s = sql.trim()
-    // CREATE TABLE
-    const create = s.match(/^CREATE\s+TABLE\s+(\w+)\s*\((.+)\)/i)
+    // CREATE TABLE (handles IF NOT EXISTS and composite PRIMARY KEY)
+    const create = s.match(/^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\((.+)\)/is)
     if (create) {
       const table = create[1]!
-      const colsRaw = create[2]!
-      // Split by comma not in parens (simple: columns here never have nested commas)
-      const colDefs = colsRaw.split(',').map((c) => c.trim())
+      let colsRaw = create[2]!
+      // Avoid recreating existing table for IF NOT EXISTS
+      if (/IF\s+NOT\s+EXISTS/i.test(s) && this.tables.has(table)) return undefined
+      let compositeKeys: string[] | undefined
+      const pkMatch = colsRaw.match(/,\s*PRIMARY\s+KEY\s*\(([^)]+)\)/i)
+      if (pkMatch) {
+        compositeKeys = pkMatch[1]!.split(',').map((c) => c.trim())
+        colsRaw = colsRaw.replace(pkMatch[0], '')
+      } else {
+        const inlinePk = colsRaw.match(/PRIMARY\s+KEY\s*\(([^)]+)\)/i)
+        if (inlinePk) {
+          compositeKeys = inlinePk[1]!.split(',').map((c) => c.trim())
+          colsRaw = colsRaw.replace(inlinePk[0], '')
+        }
+      }
+      const colDefs = colsRaw.split(',').map((c) => c.trim()).filter(Boolean)
       const columns: string[] = []
       let primaryKey: string | undefined
       for (const def of colDefs) {
@@ -110,15 +127,54 @@ class MockDatabase {
           if (/PRIMARY\s+KEY/i.test(def)) primaryKey = m[1]!
         }
       }
-      this.tables.set(
-        table,
-        primaryKey !== undefined ? { columns, primaryKey, rows: [] } : { columns, rows: [] },
-      )
+      if (compositeKeys) {
+        this.tables.set(table, {
+          columns,
+          primaryKey: compositeKeys.join(','),
+          rows: [],
+        } as unknown as Table)
+        ;(this.tables.get(table) as unknown as Record<string, unknown>).compositeKeys = compositeKeys
+      } else {
+        this.tables.set(
+          table,
+          primaryKey !== undefined ? { columns, primaryKey, rows: [] } : { columns, rows: [] },
+        )
+      }
       persisted.set(this.name, cloneTables(this.tables))
       return undefined
     }
 
-    // INSERT INTO
+    // DELETE FROM (needed for cleanup in tests)
+    const del = s.match(/^DELETE\s+FROM\s+(\w+)/i)
+    if (del) {
+      const table = del[1]!
+      const t = this.tables.get(table)
+      if (!t) throw new Error(`no such table: ${table}`)
+      const where = s.match(/WHERE\s+(\w+)\s*=\s*\?/i)
+      if (where) {
+        const col = where[1]!
+        const val = params[0]
+        t.rows = t.rows.filter((r) => r[col] !== val)
+      } else {
+        t.rows = []
+      }
+      persisted.set(this.name, cloneTables(this.tables))
+      return undefined
+    }
+
+    // UPDATE (minimal: SET col = ? WHERE col = ?)
+    if (/^UPDATE\s+/i.test(s)) {
+      const tableMatch = s.match(/^UPDATE\s+(\w+)/i)
+      const table = tableMatch?.[1]
+      if (!table) throw new Error(`unsupported UPDATE: ${sql}`)
+      const t = this.tables.get(table)
+      if (!t) throw new Error(`no such table: ${table}`)
+      // Very narrow: only used for known_hosts upsert fallback, not needed
+      persisted.set(this.name, cloneTables(this.tables))
+      return undefined
+    }
+
+    // INSERT INTO (handles ON CONFLICT)
     const insert = s.match(/^INSERT\s+INTO\s+(\w+)(?:\s*\(([^)]+)\))?\s+VALUES\s*\(/i)
     if (insert) {
       const table = insert[1]!
@@ -130,11 +186,34 @@ class MockDatabase {
       cols.forEach((col, i) => {
         row[col] = params[i]
       })
-      // Fill missing columns with null
       for (const c of t.columns) if (!(c in row)) row[c] = null
-      if (t.primaryKey) {
+      const hasConflictClause = /ON\s+CONFLICT/i.test(s)
+      const compositeKeys = (t as unknown as Record<string, unknown>).compositeKeys as
+        | string[]
+        | undefined
+      if (compositeKeys) {
+        const idx = t.rows.findIndex((r) => compositeKeys.every((k) => r[k] === row[k]))
+        if (idx !== -1) {
+          if (hasConflictClause) {
+            // upsert: merge
+            t.rows[idx] = { ...t.rows[idx], ...row }
+            persisted.set(this.name, cloneTables(this.tables))
+            return undefined
+          }
+          throw new Error(`UNIQUE constraint failed: ${table}.${compositeKeys.join(',')}`)
+        }
+      } else if (t.primaryKey) {
         const pk = t.primaryKey
-        if (t.rows.some((r) => r[pk] === row[pk])) throw new Error(`UNIQUE constraint failed: ${table}.${pk}`)
+        // primaryKey may be composite string like "host,port,algo" — already handled above
+        if (t.rows.some((r) => r[pk] === row[pk])) {
+          if (hasConflictClause) {
+            const idx = t.rows.findIndex((r) => r[pk] === row[pk])
+            t.rows[idx] = { ...t.rows[idx], ...row }
+            persisted.set(this.name, cloneTables(this.tables))
+            return undefined
+          }
+          throw new Error(`UNIQUE constraint failed: ${table}.${pk}`)
+        }
       }
       t.rows.push(row)
       persisted.set(this.name, cloneTables(this.tables))
