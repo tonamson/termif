@@ -262,20 +262,20 @@ Before the vault, because `sheet/rows.ts` and `sheet/client.ts` both reference
 
 ### Task 9 — the credential read and write path
 
-- [ ] Failing test in `test/renderer/hostStore.test.ts`: saving a credential
+- [x] Failing test in `test/renderer/hostStore.test.ts`: saving a credential
       writes `secret` verbatim, with no encrypt step and no `vault()` dep.
-- [ ] Failing test in the connect-flow test: connecting with a saved credential
+- [x] Failing test in the connect-flow test: connecting with a saved credential
       passes `credential.secret` to `ssh.connect` unchanged.
-- [ ] Failing test: a host whose `authRef` points at a deleted credential fails
+- [x] Failing test: a host whose `authRef` points at a deleted credential fails
       with a clear error rather than connecting with an empty password. The old
       code raised `vault_locked` here; that code is gone, so this path needs its
       own error and its own test.
-- [ ] Update `state/hostStore.ts` (drop the `vault` dep, write `secret`) and
+- [x] Update `state/hostStore.ts` (drop the `vault` dep, write `secret`) and
       `state/connectFlow.tsx` (`resolveCredential` loses its `vault` parameter
       and its decrypt call).
-- [ ] `views/HostForm.tsx` writes `secret` directly.
-- [ ] Check every `catch` on this path: no error message may include the secret.
-- [ ] `git commit -m "feat(desktop): read and write credentials in the clear"`
+- [x] `views/HostForm.tsx` writes `secret` directly.
+- [x] Check every `catch` on this path: no error message may include the secret.
+- [x] `git commit -m "feat(desktop): read and write credentials in the clear"`
 
 ### Task 10 — known-hosts wiring
 

@@ -1,12 +1,4 @@
-import {
-  CoreError,
-  newId,
-  type Host,
-  type HostInput,
-  type StoredCredential,
-  type Store,
-  type Vault,
-} from '@termif/core'
+import { newId, type Host, type HostInput, type StoredCredential, type Store } from '@termif/core'
 import { createStore, type Observable } from './useStore.js'
 
 export interface SecretInput {
@@ -35,8 +27,6 @@ export interface HostStore extends Observable<HostState> {
 
 export interface HostStoreDeps {
   store: Store
-  /** Read lazily: the vault can be locked between renders. */
-  vault: () => Vault | null
 }
 
 export function createHostStore(deps: HostStoreDeps): HostStore {
@@ -81,21 +71,12 @@ export function createHostStore(deps: HostStoreDeps): HostStore {
       let authRef = input.authRef ?? null
 
       if (secret !== null) {
-        const vault = deps.vault()
-        if (vault === null) {
-          throw new CoreError('vault_locked', 'unlock the vault before saving a credential')
-        }
-
-        // Single write: generate the id first and encrypt with it as the AAD,
-        // so the stored ciphertext is bound to its row from the start. When
-        // editing a host that already has a credential, reuse that id — a new
-        // row would leave the old one orphaned.
         const id = authRef ?? newId()
         const credential = await deps.store.upsertCredential({
           id,
           label: secret.label,
           kind: secret.kind,
-          cipher: vault.encrypt(secret.secret, id),
+          secret: secret.secret,
         })
         authRef = credential.id
       }

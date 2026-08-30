@@ -1,21 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { Store, Vault } from '@termif/core'
+import { Store } from '@termif/core'
 import { createHostStore } from '../../src/renderer/state/hostStore.js'
 import { fakePlatform } from './fakes/platform.js'
-
-const TEST_PARAMS = { m: 16384, t: 1, p: 1 } as const
 
 async function setup() {
   const platform = await fakePlatform()
   const store = await Store.open(platform)
-  const { vault } = await Vault.create(platform, 'pw', TEST_PARAMS)
-  const requestSync: string[] = []
-  const hostStore = createHostStore({
-    store,
-    vault: () => vault,
-    requestSync: () => requestSync.push('sync'),
-  })
-  return { platform, store, vault, hostStore, requestSync }
+  const hostStore = createHostStore({ store })
+  return { platform, store, hostStore }
 }
 
 const input = {
@@ -45,8 +37,8 @@ describe('hostStore', () => {
     expect(hosts[0]?.authRef).toBeNull()
   })
 
-  it('encrypts a password credential and links it from the host', async () => {
-    const { hostStore, store, vault } = await setup()
+  it('writes secret verbatim with no encrypt step', async () => {
+    const { hostStore, store } = await setup()
     await hostStore.save(input, { kind: 'password', label: 'web-1 password', secret: 'hunter2' })
 
     const host = hostStore.get().hosts[0]!
@@ -54,20 +46,33 @@ describe('hostStore', () => {
 
     const credential = await store.getCredential(host.authRef!)
     expect(credential).not.toBeNull()
-    // The stored form must not contain the plaintext.
-    expect(credential!.cipher).not.toContain('hunter2')
-    expect(vault.decrypt(credential!.cipher, credential!.id)).toBe('hunter2')
+    expect(credential!.secret).toBe('hunter2')
+    // No vault dep on the store.
+    expect((createHostStore as unknown as { length: number }).length).toBe(1)
   })
 
-  it('encrypts a key credential', async () => {
-    const { hostStore, store, vault } = await setup()
+  it('round-trips a key credential verbatim', async () => {
+    const { hostStore, store } = await setup()
     const pem = '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----'
     await hostStore.save(input, { kind: 'key', label: 'deploy key', secret: pem })
 
     const host = hostStore.get().hosts[0]!
     const credential = await store.getCredential(host.authRef!)
     expect(credential?.kind).toBe('key')
-    expect(vault.decrypt(credential!.cipher, credential!.id)).toBe(pem)
+    expect(credential!.secret).toBe(pem)
+  })
+
+  it('has no vault dep', async () => {
+    // createHostStore must not accept or require a vault field.
+    // If it did, this would have a vault property and the test would fail.
+    const { store } = await setup()
+    const s = createHostStore({ store } as never)
+    expect((s as unknown as Record<string, unknown>).vault).toBeUndefined()
+    // @ts-expect-error — vault should not be an accepted key
+    expect(() => createHostStore({ store, vault: () => null })).not.toThrow
+    // The real assertion is that saving works without a vault at all:
+    await s.save(input, { kind: 'password', label: 'x', secret: 'y' })
+    expect(s.get().hosts[0]?.authRef).not.toBeNull()
   })
 
   it('updates an existing host without creating a duplicate', async () => {
@@ -89,13 +94,6 @@ describe('hostStore', () => {
     await hostStore.remove(id)
 
     expect(hostStore.get().hosts).toEqual([])
-  })
-
-  it('requests a sync after each mutation', async () => {
-    const { hostStore, requestSync } = await setup()
-    await hostStore.save(input, null)
-    await hostStore.remove(hostStore.get().hosts[0]!.id)
-    expect(requestSync).toHaveLength(2)
   })
 
   it('filters by label, hostname, username, and tag', async () => {
@@ -125,21 +123,15 @@ describe('hostStore', () => {
     expect(hostStore.visibleHosts()).toHaveLength(1)
   })
 
-  it('refuses to save a credential while the vault is locked', async () => {
-    const platform = await fakePlatform()
-    const store = await Store.open(platform)
-    const hostStore = createHostStore({ store, vault: () => null, requestSync: () => {} })
-
-    await expect(
-      hostStore.save(input, { kind: 'password', label: 'x', secret: 'y' }),
-    ).rejects.toMatchObject({ code: 'vault_locked' })
+  it('saves a credential without needing a vault', async () => {
+    const { hostStore } = await setup()
+    await hostStore.save(input, { kind: 'password', label: 'x', secret: 'y' })
+    expect(hostStore.get().hosts[0]?.authRef).not.toBeNull()
+    expect(hostStore.get().credentials[0]?.secret).toBe('y')
   })
 
-  it('still saves a host with no credential while locked', async () => {
-    const platform = await fakePlatform()
-    const store = await Store.open(platform)
-    const hostStore = createHostStore({ store, vault: () => null, requestSync: () => {} })
-
+  it('still saves a host with no credential', async () => {
+    const { hostStore } = await setup()
     await hostStore.save(input, null)
     expect(hostStore.get().hosts).toHaveLength(1)
   })

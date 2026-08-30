@@ -15,7 +15,12 @@ const persisted = new Map<string, Map<string, Table>>()
 
 function cloneTables(src: Map<string, Table>): Map<string, Table> {
   const out = new Map<string, Table>()
-  for (const [k, v] of src) out.set(k, { columns: [...v.columns], primaryKey: v.primaryKey, rows: v.rows.map((r) => ({ ...r })) })
+  for (const [k, v] of src)
+    out.set(k, {
+      columns: [...v.columns],
+      ...(v.primaryKey !== undefined ? { primaryKey: v.primaryKey } : {}),
+      rows: v.rows.map((r) => ({ ...r })),
+    } as Table)
   return out
 }
 
@@ -105,7 +110,10 @@ class MockDatabase {
           if (/PRIMARY\s+KEY/i.test(def)) primaryKey = m[1]!
         }
       }
-      this.tables.set(table, { columns, primaryKey, rows: [] })
+      this.tables.set(
+        table,
+        primaryKey !== undefined ? { columns, primaryKey, rows: [] } : { columns, rows: [] },
+      )
       persisted.set(this.name, cloneTables(this.tables))
       return undefined
     }

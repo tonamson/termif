@@ -1,41 +1,25 @@
 import { useCallback, useState, type ReactNode } from 'react'
-import {
-  CoreError,
-  t,
-  type ConnectCredential,
-  type Host,
-  type Store,
-  type Vault,
-} from '@termif/core'
+import { CoreError, t, type ConnectCredential, type Host, type Store } from '@termif/core'
 import { HostKeyPrompt } from '../views/HostKeyPrompt.js'
 import type { App } from './boot.js'
 import type { HostStore } from './hostStore.js'
 
-/**
- * Reads a host's credential and decrypts it. The plaintext exists only for the
- * duration of the connect call and is never written anywhere (spec §3).
- */
+/** Reads a host's credential. The secret is returned verbatim from the store. */
 export async function resolveCredential(
   store: Store,
-  vault: Vault | null,
   host: Host,
 ): Promise<ConnectCredential | null> {
   if (host.authRef === null) return null
-
-  if (vault === null) {
-    throw new CoreError('vault_locked', 'unlock the vault to use this host’s credential')
-  }
 
   const credential = await store.getCredential(host.authRef)
   if (credential === null) {
     throw new CoreError(
       'credential_missing',
-      'the credential this host points at is no longer in the vault',
+      'the credential this host points at no longer exists',
     )
   }
 
-  const secret = vault.decrypt(credential.cipher, credential.id)
-  return credential.kind === 'password' ? { password: secret } : { privateKeyPem: secret }
+  return credential.kind === 'password' ? { password: credential.secret } : { privateKeyPem: credential.secret }
 }
 
 export type ConnectFailure =
@@ -107,7 +91,7 @@ export function useConnectFlow(app: App, hostStore: HostStore): ConnectFlow {
 
   const attempt = useCallback(
     async (host: Host): Promise<void> => {
-      const credential = await resolveCredential(app.store, app.vaultStore.vault(), host)
+      const credential = await resolveCredential(app.store, host)
       if (credential === null) {
         // No stored credential: the host form is where one gets added, so say
         // so rather than opening a second password prompt here.

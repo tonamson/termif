@@ -146,7 +146,7 @@ describe('TerminalPane', () => {
     render(<TerminalPane tabId="t1" sessions={makeSessions() as never} active />)
 
     await waitFor(() => expect(constructed.length).toBeGreaterThan(0))
-    const options = constructed[constructed.length - 1]
+    const options = constructed[constructed.length - 1]!
 
     expect(options.theme?.background).toBe(palette.bgApp)
     expect(options.theme?.foreground).toBe(palette.fg)

@@ -12,12 +12,7 @@ import { useConnectFlow } from '../state/connectFlow.js'
 
 export function MainLayout({ app }: { app: App }) {
   // Created once per mount and kept: recreating it would drop the loaded list.
-  const [hostStore] = useState(() =>
-    createHostStore({
-      store: app.store,
-      vault: () => null,
-    }),
-  )
+  const [hostStore] = useState(() => createHostStore({ store: app.store }))
   const hosts = useStore(hostStore)
 
   const [pane, setPane] = useState<Pane>('terminals')

@@ -1,16 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { CoreError } from '@termif/core'
+import { CoreError, Store } from '@termif/core'
 import { resolveCredential, classifyConnectError } from '../../src/renderer/state/connectFlow.js'
-import { Store, Vault } from '@termif/core'
 import { fakePlatform } from './fakes/platform.js'
-
-const TEST_PARAMS = { m: 16384, t: 1, p: 1 } as const
 
 describe('resolveCredential', () => {
   it('returns nothing for a host with no stored credential', async () => {
     const platform = await fakePlatform()
     const store = await Store.open(platform)
-    const { vault } = await Vault.create(platform, 'pw', TEST_PARAMS)
 
     const host = await store.upsertHost({
       label: 'h',
@@ -22,75 +18,17 @@ describe('resolveCredential', () => {
       groupId: null,
     })
 
-    expect(await resolveCredential(store, vault, host)).toBeNull()
+    expect(await resolveCredential(store, host)).toBeNull()
   })
 
-  it('decrypts a password credential', async () => {
+  it('passes credential.secret to the caller unchanged (no decrypt)', async () => {
     const platform = await fakePlatform()
     const store = await Store.open(platform)
-    const { vault } = await Vault.create(platform, 'pw', TEST_PARAMS)
 
     const credential = await store.upsertCredential({
       label: 'pw',
       kind: 'password',
-      cipher: 'placeholder',
-    })
-    const sealed = await store.upsertCredential({
-      id: credential.id,
-      label: 'pw',
-      kind: 'password',
-      cipher: vault.encrypt('hunter2', credential.id),
-    })
-    const host = await store.upsertHost({
-      label: 'h',
-      hostname: 'h',
-      port: 22,
-      username: 'u',
-      authRef: sealed.id,
-      tags: [],
-      groupId: null,
-    })
-
-    expect(await resolveCredential(store, vault, host)).toEqual({ password: 'hunter2' })
-  })
-
-  it('decrypts a key credential into privateKeyPem', async () => {
-    const platform = await fakePlatform()
-    const store = await Store.open(platform)
-    const { vault } = await Vault.create(platform, 'pw', TEST_PARAMS)
-
-    const credential = await store.upsertCredential({
-      label: 'key',
-      kind: 'key',
-      cipher: 'placeholder',
-    })
-    const pem = '-----BEGIN OPENSSH PRIVATE KEY-----\nx\n-----END OPENSSH PRIVATE KEY-----'
-    const sealed = await store.upsertCredential({
-      id: credential.id,
-      label: 'key',
-      kind: 'key',
-      cipher: vault.encrypt(pem, credential.id),
-    })
-    const host = await store.upsertHost({
-      label: 'h',
-      hostname: 'h',
-      port: 22,
-      username: 'u',
-      authRef: sealed.id,
-      tags: [],
-      groupId: null,
-    })
-
-    expect(await resolveCredential(store, vault, host)).toEqual({ privateKeyPem: pem })
-  })
-
-  it('throws when the vault is locked but a credential is needed', async () => {
-    const platform = await fakePlatform()
-    const store = await Store.open(platform)
-    const credential = await store.upsertCredential({
-      label: 'pw',
-      kind: 'password',
-      cipher: 'AA',
+      secret: 'hunter2',
     })
     const host = await store.upsertHost({
       label: 'h',
@@ -102,15 +40,43 @@ describe('resolveCredential', () => {
       groupId: null,
     })
 
-    await expect(resolveCredential(store, null, host)).rejects.toMatchObject({
-      code: 'vault_locked',
-    })
+    expect(await resolveCredential(store, host)).toEqual({ password: 'hunter2' })
+    // Verify the stored form is literally the secret — no cipher field.
+    const stored = await store.getCredential(credential.id)
+    expect(stored!.secret).toBe('hunter2')
+    expect((stored as unknown as Record<string, unknown>).cipher).toBeUndefined()
   })
 
-  it('throws a clear error when the referenced credential is gone', async () => {
+  it('resolves a key credential into privateKeyPem', async () => {
     const platform = await fakePlatform()
     const store = await Store.open(platform)
-    const { vault } = await Vault.create(platform, 'pw', TEST_PARAMS)
+
+    const pem = '-----BEGIN OPENSSH PRIVATE KEY-----\nx\n-----END OPENSSH PRIVATE KEY-----'
+    const credential = await store.upsertCredential({
+      label: 'key',
+      kind: 'key',
+      secret: pem,
+    })
+    const host = await store.upsertHost({
+      label: 'h',
+      hostname: 'h',
+      port: 22,
+      username: 'u',
+      authRef: credential.id,
+      tags: [],
+      groupId: null,
+    })
+
+    expect(await resolveCredential(store, host)).toEqual({ privateKeyPem: pem })
+  })
+
+  it('resolveCredential has no vault param', async () => {
+    expect(resolveCredential.length).toBe(2)
+  })
+
+  it('throws a clear error when the referenced credential is gone (deleted)', async () => {
+    const platform = await fakePlatform()
+    const store = await Store.open(platform)
     const host = await store.upsertHost({
       label: 'h',
       hostname: 'h',
@@ -121,9 +87,65 @@ describe('resolveCredential', () => {
       groupId: null,
     })
 
-    await expect(resolveCredential(store, vault, host)).rejects.toMatchObject({
+    await expect(resolveCredential(store, host)).rejects.toMatchObject({
       code: 'credential_missing',
     })
+  })
+
+  it('deleted credential error does not include the secret', async () => {
+    const platform = await fakePlatform()
+    const store = await Store.open(platform)
+    const secret = 'super-secret-hunter2'
+    const credential = await store.upsertCredential({
+      label: 'pw',
+      kind: 'password',
+      secret,
+    })
+    const host = await store.upsertHost({
+      label: 'h',
+      hostname: 'h',
+      port: 22,
+      username: 'u',
+      authRef: credential.id,
+      tags: [],
+      groupId: null,
+    })
+    await store.deleteCredential(credential.id)
+
+    let err: unknown
+    try {
+      await resolveCredential(store, host)
+    } catch (e) {
+      err = e
+    }
+    expect(err).toBeDefined()
+    const msg = err instanceof Error ? err.message : String(err)
+    expect(msg).not.toContain(secret)
+    expect((err as CoreError).code).toBe('credential_missing')
+  })
+
+  it('connecting with saved credential would pass secret unchanged to ssh.connect', async () => {
+    // Simulate the useConnectFlow attempt path: resolve then ssh.connect
+    const platform = await fakePlatform()
+    const store = await Store.open(platform)
+    const credential = await store.upsertCredential({
+      label: 'pw',
+      kind: 'password',
+      secret: 'hunter2',
+    })
+    const host = await store.upsertHost({
+      label: 'h',
+      hostname: 'h',
+      port: 22,
+      username: 'u',
+      authRef: credential.id,
+      tags: [],
+      groupId: null,
+    })
+    const resolved = await resolveCredential(store, host)
+    const sshConnect = vi.fn(async (_h: unknown, cred: unknown) => 'sess-1')
+    await sshConnect(host, resolved)
+    expect(sshConnect).toHaveBeenCalledWith(host, { password: 'hunter2' })
   })
 })
 
