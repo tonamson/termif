@@ -38,7 +38,7 @@ export function HostKeyPrompt({
           (spec §7).
         */}
         <button type="button" onClick={onCancel} autoFocus>
-          Cancel
+          {t('hostkey.unknown.cancel')}
         </button>
       </div>
     )
