@@ -6,10 +6,12 @@ import {
   type Platform,
 } from '@termif/core'
 import { createTabStore, type TabStore } from './tabStore.js'
+import { createPrefsStore, type PrefsStore } from './prefs.js'
 
 export interface App {
   platform: Platform
   store: Store
+  prefs: PrefsStore
   sessions: SessionManager
   tabs: TabStore
   transfers: TransferManager
@@ -18,6 +20,8 @@ export interface App {
 
 export async function bootApp(platform: Platform): Promise<App> {
   const store = await Store.open(platform)
+  const prefs = createPrefsStore({ store })
+  await prefs.load()
 
   const sessions = new SessionManager({ ssh: platform.ssh, now: platform.now })
   const tabs = createTabStore()
@@ -31,5 +35,5 @@ export async function bootApp(platform: Platform): Promise<App> {
 
   await sessions.start()
 
-  return { platform, store, sessions, tabs, transfers, forwards }
+  return { platform, store, prefs, sessions, tabs, transfers, forwards }
 }
