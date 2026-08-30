@@ -66,10 +66,11 @@ test('status dot turns green on connect and grey after the tab closes', async ()
     await row.getByRole('button', { name: /connect/i }).click()
 
     // First connection triggers the unknown host key prompt — trust it.
-    const trust = window.getByRole('button', { name: /trust/i })
-    if (await trust.isVisible().catch(() => false)) {
-      await trust.click()
-    }
+    // waitFor, not isVisible: the prompt races the click and isVisible
+    // silently loses, leaving the connect failing forever.
+    const trust = window.getByRole('button', { name: /trust and connect/i })
+    await trust.waitFor({ timeout: 8000 })
+    await trust.click()
 
     // Dot must flip to connected without any other state change.
     await expect(row).toHaveAttribute('data-state', 'connected', { timeout: 15000 })

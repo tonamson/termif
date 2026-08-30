@@ -78,8 +78,8 @@ test('a connected session survives a files round-trip', async () => {
     await window.locator('#host-label').fill('layout-sshd')
     await window.locator('#host-hostname').fill('127.0.0.1')
     await window.locator('#host-port').fill('22022')
-    await window.locator('#host-username').fill('tester')
-    await window.locator('#host-password').fill('tester')
+    await window.locator('#host-username').fill('termif')
+    await window.locator('#host-password').fill('termif-test-pw')
     await window.getByRole('button', { name: /^Save$/i }).click()
 
     // Skip gracefully when the test sshd is not running.
@@ -99,6 +99,11 @@ test('a connected session survives a files round-trip', async () => {
     test.skip(!reachable, 'docker test sshd (127.0.0.1:22022) is not running')
 
     await window.getByText('layout-sshd').dblclick()
+    // First connection triggers the unknown host key prompt — trust it before
+    // any tab can exist.
+    const trust = window.getByRole('button', { name: /trust and connect/i })
+    await trust.waitFor({ timeout: 8000 })
+    await trust.click()
     await expect(window.locator('[data-panel="terminal"] .terminal-tabs__tab')).toBeVisible({ timeout: 30_000 })
 
     await window.getByRole('tab', { name: /files/i }).click()
