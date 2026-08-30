@@ -34,15 +34,24 @@ export function TerminalTabs({ app }: { app: App }) {
     }
   }, [app.sessions, tabStore])
 
-  const handleCloseTab = (tabId: string, e?: React.MouseEvent) => {
+  const handleCloseTab = (tabId: string, e?: React.SyntheticEvent) => {
     if (e) {
       e.stopPropagation()
       e.preventDefault()
     }
-    // Optimistically close in tabStore so UI is responsive immediately
+
+    // Immediately remove from UI and activate neighboring tab if closing active
+    const currentIndex = tabs.findIndex((t) => t.id === tabId)
+    if (activeId === tabId && tabs.length > 1) {
+      const nextTab = tabs[currentIndex + 1] ?? tabs[currentIndex - 1]
+      if (nextTab) {
+        tabStore.activate(nextTab.id)
+      }
+    }
+
     tabStore.close(tabId)
-    // Clean up session in background
-    void app.sessions.closeTab(tabId)
+    // Async cleanup of background SSH channel
+    void app.sessions.closeTab(tabId).catch(() => {})
   }
 
   useEffect(() => {
@@ -61,7 +70,7 @@ export function TerminalTabs({ app }: { app: App }) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeId, app.sessions])
+  }, [activeId, tabs, app.sessions])
 
   useEffect(() => {
     const element = bar.current
@@ -108,7 +117,16 @@ export function TerminalTabs({ app }: { app: App }) {
                 type="button"
                 className="terminal-tab__close"
                 aria-label={t('terminal.close', { title: tab.title })}
-                onClick={(e) => handleCloseTab(tab.id, e)}
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  handleCloseTab(tab.id, e)
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  handleCloseTab(tab.id, e)
+                }}
               >
                 ×
               </button>
