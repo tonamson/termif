@@ -53,13 +53,9 @@
 
 @container (max-width: 999px) {
   .layout { grid-template-columns: var(--sidebar-rail-w) minmax(0, 1fr); }
-  .host-list__toolbar,
-  .host-list__grouphead,
+  /* keep labels visible even in rail mode — user reported black screen */
   .host-list__label,
-  .host-list__target,
-  .host-list__actions { display: none; }
-  .host-list li[data-state='closed'] { display: none; }
-  .host-list li { grid-template-columns: 1fr; justify-items: center; padding: 0; }
+  .host-list__target { display: block !important; opacity: 1 !important; }
   .sidebar-resizer { display: none; }
 }
 
@@ -200,12 +196,20 @@
 }
 li[data-state='connected'] .host-list__dot { background: var(--ok); }
 li[data-state='reconnecting'] .host-list__dot { background: var(--warn); }
-.host-list__label { grid-area: label; color: var(--fg); font-weight: 500; }
+.host-list__label {
+  grid-area: label;
+  color: var(--fg, #e6edf3) !important;
+  font-weight: 600;
+  opacity: 1 !important;
+  display: block !important;
+}
 .host-list__target {
   grid-area: target;
-  color: var(--fg-muted);
+  color: var(--fg-muted, #a7b3c0) !important;
   font-family: var(--font-mono);
   font-size: 11px;
+  opacity: 1 !important;
+  display: block !important;
 }
 .host-list li:hover {
   background: var(--bg-raised);
