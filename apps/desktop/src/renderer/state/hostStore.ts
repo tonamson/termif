@@ -37,7 +37,6 @@ export interface HostStoreDeps {
   store: Store
   /** Read lazily: the vault can be locked between renders. */
   vault: () => Vault | null
-  requestSync: () => void
 }
 
 export function createHostStore(deps: HostStoreDeps): HostStore {
@@ -103,7 +102,6 @@ export function createHostStore(deps: HostStoreDeps): HostStore {
 
       const host = await deps.store.upsertHost({ ...input, authRef })
       await reload()
-      deps.requestSync()
       return host
     },
 
@@ -116,7 +114,6 @@ export function createHostStore(deps: HostStoreDeps): HostStore {
       if (host?.authRef != null) await deps.store.deleteCredential(host.authRef)
 
       await reload()
-      deps.requestSync()
     },
   }
 }

@@ -20,7 +20,6 @@ export function MainLayout({ app }: { app: App }) {
     createHostStore({
       store: app.store,
       vault: () => app.vaultStore.vault(),
-      requestSync: () => app.sync?.requestSync(),
     }),
   )
   const hosts = useStore(hostStore)

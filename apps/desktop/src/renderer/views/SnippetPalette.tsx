@@ -154,9 +154,7 @@ export function SnippetPalette({
   onSend(body: string): Promise<void>
   onClose(): void
 }) {
-  const [snippetStore] = useState(() =>
-    createSnippetStore({ store: app.store, requestSync: () => app.sync?.requestSync() }),
-  )
+  const [snippetStore] = useState(() => createSnippetStore({ store: app.store }))
   const state = useStore(snippetStore)
 
   useEffect(() => {

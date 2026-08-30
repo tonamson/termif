@@ -6,9 +6,8 @@ import { fakePlatform } from './fakes/platform.js'
 async function setup() {
   const platform = await fakePlatform()
   const store = await Store.open(platform)
-  const synced: string[] = []
-  const snippetStore = createSnippetStore({ store, requestSync: () => synced.push('sync') })
-  return { store, snippetStore, synced }
+  const snippetStore = createSnippetStore({ store })
+  return { store, snippetStore }
 }
 
 describe('snippetStore', () => {
@@ -54,11 +53,11 @@ describe('snippetStore', () => {
     expect(snippetStore.get().snippets).toEqual([])
   })
 
-  it('requests a sync after each mutation', async () => {
-    const { snippetStore, synced } = await setup()
+  it('removes without extra sync plumbing', async () => {
+    const { snippetStore } = await setup()
     await snippetStore.save({ label: 'a', body: 'ls', tags: [] })
     await snippetStore.remove(snippetStore.get().snippets[0]!.id)
-    expect(synced).toHaveLength(2)
+    expect(snippetStore.get().snippets).toHaveLength(0)
   })
 })
 

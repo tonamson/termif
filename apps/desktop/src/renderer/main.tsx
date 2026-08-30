@@ -21,5 +21,5 @@ const platform = createPlatform(api)
 // synced (spec §5).
 await api.ssh.init('termif_known_hosts')
 
-const app = await bootApp(platform, api)
+const app = await bootApp(platform)
 createRoot(root).render(<AppRoot app={app} />)

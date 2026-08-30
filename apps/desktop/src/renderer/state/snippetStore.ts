@@ -23,10 +23,7 @@ export function withTrailingNewline(body: string): string {
   return body.endsWith('\n') || body.endsWith('\r') ? body : `${body}\n`
 }
 
-export function createSnippetStore(deps: {
-  store: Store
-  requestSync: () => void
-}): SnippetStore {
+export function createSnippetStore(deps: { store: Store }): SnippetStore {
   const base = createStore<SnippetState>({ snippets: [], query: '' })
 
   const reload = async (): Promise<void> => {
@@ -55,13 +52,11 @@ export function createSnippetStore(deps: {
     async save(input): Promise<void> {
       await deps.store.upsertSnippet(input)
       await reload()
-      deps.requestSync()
     },
 
     async remove(id): Promise<void> {
       await deps.store.deleteSnippet(id)
       await reload()
-      deps.requestSync()
     },
   }
 }

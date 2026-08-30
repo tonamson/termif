@@ -228,19 +228,19 @@ Before the vault, because `sheet/rows.ts` and `sheet/client.ts` both reference
 
 ### Task 7 — renderer boot
 
-- [ ] Failing test: `bootApp` returns an `App` with no `vaultStore` and no
+- [x] Failing test: `bootApp` returns an `App` with no `vaultStore` and no
       `sync`, and never reads the `spreadsheetId` meta key.
-- [ ] Failing test: `bootApp` resolves with an empty database and no thrown
+- [x] Failing test: `bootApp` resolves with an empty database and no thrown
       error — first run must not depend on any meta row existing.
-- [ ] Rewrite `renderer/state/boot.ts`: drop `SheetClient`, `SyncEngine`,
+- [x] Rewrite `renderer/state/boot.ts`: drop `SheetClient`, `SyncEngine`,
       `setSpreadsheet`, `SPREADSHEET_KEY`, `vaultStore`, and the `sync` field
       of `App`.
-- [ ] Delete `renderer/state/vaultStore.ts`, `renderer/state/signIn.ts`,
+- [x] Delete `renderer/state/vaultStore.ts`, `renderer/state/signIn.ts`,
       `test/renderer/vaultStore.test.ts`, `test/renderer/signIn.test.ts`.
-- [ ] Remove every `requestSync` call in `state/hostStore.ts` (3),
+- [x] Remove every `requestSync` call in `state/hostStore.ts` (3),
       `state/snippetStore.ts` (3), `views/SnippetPalette.tsx`, and
       `app/MainLayout.tsx`.
-- [ ] `git commit -m "refactor(desktop): boot straight into the host list"`
+- [x] `git commit -m "refactor(desktop): boot straight into the host list"`
 
 ### Task 8 — screens
 
