@@ -1,3 +1,4 @@
+import './styles/app.css'
 import { createRoot } from 'react-dom/client'
 import { AppRoot } from './app/AppRoot.js'
 import { bootApp } from './state/boot.js'
