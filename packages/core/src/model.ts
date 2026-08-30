@@ -1,0 +1,88 @@
+import { z } from 'zod'
+
+export const SCHEMA_VERSION = 1
+
+/**
+ * Argon2id cost. Sized to stay inside a mid-range phone's per-app memory
+ * budget while still costing an offline attacker real RAM. Stored in the
+ * sheet's `meta` tab so it can be raised later without breaking old vaults
+ * (spec §4).
+ */
+export const DEFAULT_KDF_PARAMS = { m: 65536, t: 3, p: 1 } as const
+
+/** Rejects anything that is not an ISO-8601 UTC instant with milliseconds. */
+const isoUtc = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, {
+  message: 'must be an ISO-8601 UTC timestamp',
+})
+
+const base64Url = z.string().regex(/^[A-Za-z0-9_-]+$/, { message: 'must be base64url' })
+
+export const hostSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  hostname: z.string().min(1),
+  port: z.number().int().min(1).max(65535),
+  username: z.string().min(1),
+  /** Id of a `StoredCredential`, or null to prompt at connect time. */
+  authRef: z.string().min(1).nullable(),
+  tags: z.array(z.string()),
+  groupId: z.string().min(1).nullable(),
+  updatedAt: isoUtc,
+  deleted: z.boolean(),
+})
+
+export const storedCredentialSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  kind: z.enum(['password', 'key']),
+  /** base64url of nonce ‖ ciphertext ‖ tag. Never plaintext. */
+  cipher: base64Url,
+  updatedAt: isoUtc,
+  deleted: z.boolean(),
+})
+
+export const snippetSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  body: z.string().min(1),
+  tags: z.array(z.string()),
+  updatedAt: isoUtc,
+  deleted: z.boolean(),
+})
+
+export const vaultMetaSchema = z.object({
+  schemaVersion: z.number().int().min(1),
+  kdfSalt: base64Url,
+  kdfParams: z.object({
+    // 16 MiB floor: below this, Argon2id stops being meaningfully memory-hard
+    // for an attacker with a GPU.
+    m: z.number().int().min(16384).max(1048576),
+    t: z.number().int().min(1).max(16),
+    p: z.number().int().min(1).max(8),
+  }),
+  vaultCheck: base64Url,
+})
+
+export type Host = z.infer<typeof hostSchema>
+export type StoredCredential = z.infer<typeof storedCredentialSchema>
+export type Snippet = z.infer<typeof snippetSchema>
+export type VaultMeta = z.infer<typeof vaultMetaSchema>
+export type KdfParams = VaultMeta['kdfParams']
+
+const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'
+
+/**
+ * 22 characters of base64url from 128 random bits. Ids are generated on four
+ * devices with no coordinator, so collision resistance matters more than
+ * brevity; `crypto.getRandomValues` is a Web Crypto global, present in every
+ * JS runtime this will ever run in.
+ */
+export function newId(): string {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  let out = ''
+  for (const byte of bytes) {
+    out += ID_ALPHABET[byte % 64]
+  }
+  return out
+}
