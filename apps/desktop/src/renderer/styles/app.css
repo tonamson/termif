@@ -64,3 +64,104 @@
   min-width: 0;
   background: var(--bg-app);
 }
+
+/* --- Sidebar: sticky search, scrolling list, account foot --------------- */
+.host-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.host-list__toolbar {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.host-list__toolbar input {
+  flex: 1;
+  min-width: 0;
+}
+
+.host-list ul {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.host-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'label actions'
+    'target actions'
+    'tags actions';
+  align-items: center;
+  gap: 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: default;
+  transition: background-color var(--motion-fast);
+}
+.host-list li:hover {
+  background: var(--bg-raised);
+}
+
+.host-list__label {
+  grid-area: label;
+  color: var(--fg);
+  font-weight: 500;
+}
+.host-list__target {
+  grid-area: target;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.host-list__tags {
+  grid-area: tags;
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.tag {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg-subtle);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+/* Hidden by opacity, never by display: the buttons must stay focusable so the
+   row is operable from the keyboard alone. */
+.host-list__actions {
+  grid-area: actions;
+  display: flex;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity var(--motion-fast);
+}
+.host-list li:hover .host-list__actions,
+.host-list li:focus-within .host-list__actions,
+.host-list__actions:focus-within {
+  opacity: 1;
+}
+
+.host-list__empty {
+  margin: auto;
+  max-width: 32ch;
+  padding: var(--space-5);
+  color: var(--fg-subtle);
+  text-align: center;
+}
+
+.layout__account {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+}

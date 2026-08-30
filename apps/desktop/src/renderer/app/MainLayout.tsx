@@ -52,35 +52,38 @@ export function MainLayout({ app }: { app: App }) {
       <Titlebar pane={pane} onPaneChange={setPane} />
       <div className="layout">
         <aside className="layout__sidebar">
-        {hasSync ? (
-          <SyncBadge status={syncStatus} onSyncNow={() => void app.sync?.syncNow()} />
-        ) : (
-          <button type="button" onClick={() => setSigningIn(true)}>
-            {t('sync.signIn')}
-          </button>
-        )}
-        {signingIn && (
-          <SignInScreen
-            app={app}
-            onDone={() => {
-              setSigningIn(false)
-              setHasSync(true)
-              setSyncStatus(app.sync?.status ?? syncStatus)
-            }}
-            onCancel={() => setSigningIn(false)}
+          <HostList
+            hosts={hostStore.visibleHosts()}
+            query={hosts.query}
+            onQueryChange={(q) => hostStore.setQuery(q)}
+            onConnect={(id) => void connect.start(id)}
+            onEdit={(id) => setEditing({ id })}
+            onDelete={(id) => void hostStore.remove(id)}
+            onAdd={() => setEditing({ id: null })}
           />
-        )}
 
-        <HostList
-          hosts={hostStore.visibleHosts()}
-          query={hosts.query}
-          onQueryChange={(q) => hostStore.setQuery(q)}
-          onConnect={(id) => void connect.start(id)}
-          onEdit={(id) => setEditing({ id })}
-          onDelete={(id) => void hostStore.remove(id)}
-          onAdd={() => setEditing({ id: null })}
-        />
-      </aside>
+          <div className="layout__account">
+            {hasSync ? (
+              <SyncBadge status={syncStatus} onSyncNow={() => void app.sync?.syncNow()} />
+            ) : (
+              <button type="button" onClick={() => setSigningIn(true)}>
+                {t('sync.signIn')}
+              </button>
+            )}
+          </div>
+
+          {signingIn && (
+            <SignInScreen
+              app={app}
+              onDone={() => {
+                setSigningIn(false)
+                setHasSync(true)
+                setSyncStatus(app.sync?.status ?? syncStatus)
+              }}
+              onCancel={() => setSigningIn(false)}
+            />
+          )}
+        </aside>
 
       <main className="layout__main">
         {editing !== null ? (

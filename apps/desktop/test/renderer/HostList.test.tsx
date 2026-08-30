@@ -171,4 +171,24 @@ describe('HostList', () => {
     )
     expect(screen.getByText(/no hosts match/i)).toBeInTheDocument()
   })
+
+  it('keeps row actions in the DOM so they stay keyboard-reachable', () => {
+    render(
+      <HostList
+        hosts={[host()]}
+        query=""
+        onQueryChange={vi.fn()}
+        onConnect={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onAdd={vi.fn()}
+      />,
+    )
+
+    // The actions are hidden with opacity, never display:none — a row's buttons
+    // must remain focusable by Tab even before the pointer arrives.
+    expect(screen.getByRole('button', { name: /connect/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /edit web-1/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /delete web-1/i })).toBeInTheDocument()
+  })
 })
