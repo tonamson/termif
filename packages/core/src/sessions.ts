@@ -31,7 +31,17 @@ interface TabRecord {
 }
 
 interface SessionRecord {
+  /**
+   * STABLE caller-facing id. Assigned once at first connect and never changes
+   * across reconnect — `disconnect`/`openTab`/`tabsForSession`/`onSessionState`
+   * all key on it, and the caller keeps that handle for the life of the session.
+   */
   id: bigint
+  /**
+   * The LIVE ssh handle the `SshBridge` cares about. Changes on each reconnect;
+   * `openShell` and `disconnect` use this so the bridge sees the current handle.
+   */
+  handleId: bigint
   host: Host
   credential: ConnectCredential
   /** True once the caller asked for a disconnect, which suppresses reconnect. */
@@ -54,6 +64,8 @@ export class SessionManager {
   readonly #sessions = new Map<bigint, SessionRecord>()
   readonly #tabs = new Map<TabId, TabRecord>()
   readonly #tabByChannel = new Map<bigint, TabId>()
+  /** live ssh handle → stable session id, so `sessionClosed` finds the record. */
+  readonly #handleToSession = new Map<bigint, bigint>()
 
   readonly #tabClosedListeners = new Set<(tab: TabId, exitStatus: number | null) => void>()
   readonly #sessionStateListeners = new Set<(sessionId: bigint, state: SessionState) => void>()
@@ -108,13 +120,17 @@ export class SessionManager {
   }
 
   async connect(host: Host, credential: ConnectCredential): Promise<bigint> {
-    const sessionId = await this.#openConnection(host, credential)
+    const handleId = await this.#openConnection(host, credential)
+    // The stable id the caller sees is the first ssh handle. It never changes.
+    const sessionId = handleId
     this.#sessions.set(sessionId, {
       id: sessionId,
+      handleId,
       host,
       credential,
       closingDeliberately: false,
     })
+    this.#handleToSession.set(handleId, sessionId)
     this.#emitSessionState(sessionId, 'connected')
     return sessionId
   }
@@ -126,10 +142,13 @@ export class SessionManager {
     for (const tab of [...this.#tabs.values()]) {
       if (tab.sessionId === sessionId) this.#forgetTab(tab.id)
     }
+
+    const handleId = session?.handleId
     this.#sessions.delete(sessionId)
+    if (handleId !== undefined) this.#handleToSession.delete(handleId)
 
     try {
-      await this.#ssh.disconnect(sessionId)
+      await this.#ssh.disconnect(handleId ?? sessionId)
     } catch (e) {
       // Already gone is not a failure worth surfacing.
       this.#emitLog('debug', `disconnect: ${parseFfiError(e).message}`)
@@ -137,10 +156,11 @@ export class SessionManager {
   }
 
   async openTab(sessionId: bigint, cols: number, rows: number): Promise<TabId> {
-    if (!this.#sessions.has(sessionId)) {
+    const session = this.#sessions.get(sessionId)
+    if (session === undefined) {
       throw new CoreError('no_such_session', 'that session is not open')
     }
-    const channelId = await this.#call(() => this.#ssh.openShell(sessionId, cols, rows))
+    const channelId = await this.#call(() => this.#ssh.openShell(session.handleId, cols, rows))
     const id = newId()
 
     this.#tabs.set(id, { id, sessionId, channelId, cols, rows, subscribers: new Set() })
@@ -259,7 +279,8 @@ export class SessionManager {
         return
       }
       case 'sessionClosed': {
-        const session = this.#sessions.get(event.sessionId)
+        const stableId = this.#handleToSession.get(event.sessionId)
+        const session = stableId === undefined ? undefined : this.#sessions.get(stableId)
         if (session === undefined || session.closingDeliberately) return
         void this.#reconnect(session)
         return
@@ -287,7 +308,8 @@ export class SessionManager {
       if (tab.channelId !== null) this.#tabByChannel.delete(tab.channelId)
       tab.channelId = null
     }
-    this.#sessions.delete(session.id)
+    // The bridge's old handle is dead; only the live handle may map back.
+    this.#handleToSession.delete(session.handleId)
     this.#emitSessionState(session.id, 'reconnecting')
 
     for (const delay of this.#reconnectDelays) {
@@ -295,17 +317,18 @@ export class SessionManager {
       await sleep(delay)
 
       try {
-        const newId = await this.#openConnection(session.host, session.credential)
-        this.#sessions.set(newId, { ...session, id: newId, closingDeliberately: false })
+        const handleId = await this.#openConnection(session.host, session.credential)
+        session.handleId = handleId
+        this.#handleToSession.set(handleId, session.id)
 
         for (const tab of tabs) {
-          const channelId = await this.#ssh.openShell(newId, tab.cols, tab.rows)
-          tab.sessionId = newId
+          const channelId = await this.#ssh.openShell(handleId, tab.cols, tab.rows)
+          tab.sessionId = session.id
           tab.channelId = channelId
           this.#tabByChannel.set(channelId, tab.id)
         }
 
-        this.#emitSessionState(newId, 'connected')
+        this.#emitSessionState(session.id, 'connected')
         return
       } catch (e) {
         this.#emitLog('warn', `reconnect failed: ${parseFfiError(e).message}`)
@@ -313,6 +336,8 @@ export class SessionManager {
     }
 
     this.#emitSessionState(session.id, 'closed')
+    this.#handleToSession.delete(session.handleId)
+    this.#sessions.delete(session.id)
     for (const tab of tabs) {
       this.#forgetTab(tab.id)
       for (const listener of this.#tabClosedListeners) listener(tab.id, null)

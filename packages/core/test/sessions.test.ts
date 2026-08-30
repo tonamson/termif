@@ -265,6 +265,33 @@ describe('SessionManager', () => {
     expect(ssh.openedShells).toHaveLength(shellsBefore)
   })
 
+  it('disconnects by the original id after a reconnect and never reconnects again', async () => {
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh, { delaysMs: [1, 1, 1] })
+    await manager.start()
+
+    // Original id as the caller holds it. It must stay valid across reconnect.
+    const sessionId = await manager.connect(host, { password: 'pw' })
+    await manager.openTab(sessionId, 80, 24)
+    expect(ssh.openedShells).toHaveLength(1)
+
+    // Force an unexpected close so the manager reconnects internally.
+    ssh.pushEvent({ kind: 'sessionClosed', sessionId, reason: 'network changed' })
+    await eventually(() => ssh.openedShells.length === 2, 4000)
+
+    // The live ssh handle changed on reconnect. Disconnect with the STABLE id.
+    const liveHandle = ssh.openedShells[ssh.openedShells.length - 1]!.sessionId
+    await manager.disconnect(sessionId)
+
+    // It disconnected the live handle, not the dead original one.
+    expect(ssh.disconnected).toContain(liveHandle)
+
+    // A further close of that (now gone) session must not resurrect anything.
+    ssh.pushEvent({ kind: 'sessionClosed', sessionId: liveHandle, reason: 'again' })
+    await new Promise((r) => setTimeout(r, 80))
+    expect(ssh.openedShells).toHaveLength(2)
+  })
+
   it('runs exactly one drain loop no matter how many tabs exist', async () => {
     const ssh = new FakeSsh()
     const manager = makeManager(ssh)
