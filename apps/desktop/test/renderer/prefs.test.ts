@@ -31,8 +31,8 @@ describe('prefsStore', () => {
   it('updates observers before the write lands', async () => {
     const { prefs } = await setup()
     await prefs.load()
-    prefs.set('drawerTab', 'files')
-    expect(prefs.get().drawerTab).toBe('files')
+    prefs.set('sidebarWidth', 300)
+    expect(prefs.get().sidebarWidth).toBe(300)
   })
 
   it('falls back to the defaults when the stored blob is corrupt', async () => {
@@ -49,6 +49,15 @@ describe('prefsStore', () => {
     expect(prefs.get().sidebarWidth).toBe(300)
     expect(prefs.get().showHidden).toBe(DEFAULT_PREFS.showHidden)
     expect((prefs.get() as unknown as Record<string, unknown>).bogus).toBeUndefined()
+  })
+
+  it('drops stale drawer keys on load', async () => {
+    const { store, prefs } = await setup()
+    await store.setMetaValue(PREFS_KEY, JSON.stringify({ sidebarWidth: 260, drawerTab: 'files', drawerHeight: 300 }))
+    await prefs.load()
+    expect((prefs.get() as unknown as Record<string, unknown>).drawerTab).toBeUndefined()
+    expect((prefs.get() as unknown as Record<string, unknown>).drawerHeight).toBeUndefined()
+    expect(prefs.get()).toEqual(expect.objectContaining({ sidebarWidth: 260 }))
   })
 
   it('clamps a sidebar width outside the allowed range', async () => {

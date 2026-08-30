@@ -9,7 +9,7 @@ import { SidebarResizer } from '../views/SidebarResizer.js'
 import { SftpBrowser } from '../views/SftpBrowser.js'
 import { ForwardPanel } from '../views/ForwardPanel.js'
 import { Titlebar } from '../views/Titlebar.js'
-import { Drawer } from '../views/Drawer.js'
+import type { MainPanel } from '../views/Titlebar.js'
 import { Inspector } from '../views/Inspector.js'
 import { useConnectFlow } from '../state/connectFlow.js'
 import { t, type HostConnectionState } from '@termif/core'
@@ -20,6 +20,10 @@ export function MainLayout({ app }: { app: App }) {
   const prefs = useStore(app.prefs as unknown as import('../state/useStore.js').Observable<import('../state/prefs.js').UiPrefs>)
 
   const [editing, setEditing] = useState<{ id: string | null } | null>(null)
+  const [panel, setPanel] = useState<MainPanel>('terminal')
+  const returnOnEsc = (event: import('react').KeyboardEvent<HTMLElement>): void => {
+    if (event.key === 'Escape') setPanel('terminal')
+  }
 
   const connect = useConnectFlow(app, hostStore)
   const [hostStates, setHostStates] = useState<ReadonlyMap<string, HostConnectionState>>(
@@ -43,10 +47,6 @@ export function MainLayout({ app }: { app: App }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'j') {
-        event.preventDefault()
-        app.prefs.set('drawerTab', app.prefs.get().drawerTab === null ? 'files' : null)
-      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
         event.preventDefault()
         void hostStore
@@ -72,8 +72,8 @@ export function MainLayout({ app }: { app: App }) {
   return (
     <div className="shell">
       <Titlebar
-        drawerTab={prefs.drawerTab}
-        onDrawerTab={(tab) => app.prefs.set('drawerTab', tab)}
+        panel={panel}
+        onPanel={setPanel}
         inspectorOpen={prefs.inspectorOpen}
         onInspector={(open) => app.prefs.set('inspectorOpen', open)}
       />
@@ -97,7 +97,10 @@ export function MainLayout({ app }: { app: App }) {
                   : [...prefs.collapsedGroups, name],
               )
             }
-            onConnect={(id) => void connect.start(id)}
+            onConnect={(id) => {
+              setPanel('terminal')
+              void connect.start(id)
+            }}
             onEdit={(id) => setEditing({ id })}
             onDelete={(id) => void hostStore.remove(id)}
             onAdd={() => setEditing({ id: null })}
@@ -117,16 +120,18 @@ export function MainLayout({ app }: { app: App }) {
             />
           ) : (
             <>
-              <TerminalTabs app={app} />
-              {prefs.drawerTab !== null && (
-                <Drawer
-                  tab={prefs.drawerTab}
-                  height={prefs.drawerHeight}
-                  onHeight={(px) => app.prefs.set('drawerHeight', px)}
-                  onClose={() => app.prefs.set('drawerTab', null)}
-                >
-                  {prefs.drawerTab === 'files' ? <SftpBrowser app={app} /> : <ForwardPanel app={app} />}
-                </Drawer>
+              <section className="panel" data-panel="terminal" hidden={panel !== 'terminal'}>
+                <TerminalTabs app={app} />
+              </section>
+              {panel === 'files' && (
+                <section className="panel" data-panel="files" onKeyDown={returnOnEsc}>
+                  <SftpBrowser app={app} />
+                </section>
+              )}
+              {panel === 'forwards' && (
+                <section className="panel" data-panel="forwards" onKeyDown={returnOnEsc}>
+                  <ForwardPanel app={app} />
+                </section>
               )}
             </>
           )}

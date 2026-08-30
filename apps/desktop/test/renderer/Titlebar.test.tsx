@@ -4,38 +4,37 @@ import userEvent from '@testing-library/user-event'
 import { Titlebar } from '../../src/renderer/views/Titlebar.js'
 
 const base = {
-  drawerTab: null as 'files' | 'forwards' | null,
-  onDrawerTab: vi.fn(),
+  panel: 'terminal' as const,
+  onPanel: vi.fn(),
   inspectorOpen: false,
   onInspector: vi.fn(),
 }
 
 describe('Titlebar', () => {
-  it('offers two drawer buttons, not three panes', () => {
+  it('offers three panes including terminal', () => {
     render(<Titlebar {...base} />)
-    expect(screen.getAllByRole('tab')).toHaveLength(2)
-    expect(screen.queryByRole('tab', { name: /terminal/i })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(3)
+    expect(screen.getByRole('tab', { name: /terminal/i })).toBeInTheDocument()
   })
 
-  it('opens the drawer on the pressed tab when it is closed', async () => {
-    const onDrawerTab = vi.fn()
-    render(<Titlebar {...base} onDrawerTab={onDrawerTab} />)
+  it('selects the active panel', async () => {
+    render(<Titlebar {...base} panel="files" />)
+    expect(screen.getByRole('tab', { name: /files/i })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: /terminal/i })).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('notifies when a tab is pressed', async () => {
+    const onPanel = vi.fn()
+    render(<Titlebar {...base} onPanel={onPanel} />)
     await userEvent.click(screen.getByRole('tab', { name: /files/i }))
-    expect(onDrawerTab).toHaveBeenCalledWith('files')
+    expect(onPanel).toHaveBeenCalledWith('files')
   })
 
-  it('closes the drawer when the already-open tab is pressed again', async () => {
-    const onDrawerTab = vi.fn()
-    render(<Titlebar {...base} drawerTab="files" onDrawerTab={onDrawerTab} />)
-    await userEvent.click(screen.getByRole('tab', { name: /files/i }))
-    expect(onDrawerTab).toHaveBeenCalledWith(null)
-  })
-
-  it('switches tabs without closing when a different tab is pressed', async () => {
-    const onDrawerTab = vi.fn()
-    render(<Titlebar {...base} drawerTab="files" onDrawerTab={onDrawerTab} />)
+  it('switches tabs', async () => {
+    const onPanel = vi.fn()
+    render(<Titlebar {...base} panel="files" onPanel={onPanel} />)
     await userEvent.click(screen.getByRole('tab', { name: /forward/i }))
-    expect(onDrawerTab).toHaveBeenCalledWith('forwards')
+    expect(onPanel).toHaveBeenCalledWith('forwards')
   })
 
   it('toggles the inspector', async () => {

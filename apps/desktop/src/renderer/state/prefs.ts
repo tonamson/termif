@@ -4,8 +4,6 @@ import { createStore, type Observable } from './useStore.js'
 export interface UiPrefs {
   sidebarWidth: number
   collapsedGroups: string[]
-  drawerHeight: number
-  drawerTab: 'files' | 'forwards' | null
   showHidden: boolean
   inspectorOpen: boolean
 }
@@ -15,8 +13,6 @@ export const PREFS_KEY = 'ui.prefs'
 export const DEFAULT_PREFS: UiPrefs = {
   sidebarWidth: 260,
   collapsedGroups: [],
-  drawerHeight: 220,
-  drawerTab: null,
   showHidden: false,
   inspectorOpen: false,
 }
@@ -47,14 +43,6 @@ function sanitise(raw: unknown): UiPrefs {
     collapsedGroups: Array.isArray(source.collapsedGroups)
       ? source.collapsedGroups.filter((g): g is string => typeof g === 'string')
       : [],
-    drawerHeight:
-      typeof source.drawerHeight === 'number'
-        ? clamp(source.drawerHeight, 120, 2000)
-        : DEFAULT_PREFS.drawerHeight,
-    drawerTab:
-      source.drawerTab === 'files' || source.drawerTab === 'forwards'
-        ? source.drawerTab
-        : null,
     showHidden: source.showHidden === true,
     inspectorOpen: source.inspectorOpen === true,
   }

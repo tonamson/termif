@@ -1,25 +1,25 @@
 import { t } from '@termif/core'
 
-export type DrawerTab = 'files' | 'forwards'
+export type MainPanel = 'terminal' | 'files' | 'forwards'
 
 export interface TitlebarProps {
-  drawerTab: DrawerTab | null
-  onDrawerTab(tab: DrawerTab | null): void
+  panel: MainPanel
+  onPanel(panel: MainPanel): void
   inspectorOpen: boolean
   onInspector(open: boolean): void
 }
 
-export function Titlebar({ drawerTab, onDrawerTab, inspectorOpen, onInspector }: TitlebarProps) {
+export function Titlebar({ panel, onPanel, inspectorOpen, onInspector }: TitlebarProps) {
   return (
     <header className="titlebar">
-      <div className="titlebar__panes" role="tablist">
-        {(['files', 'forwards'] as const).map((name) => (
+      <div className="titlebar__panes" role="tablist" aria-label={t('layout.panels')}>
+        {(['terminal', 'files', 'forwards'] as const).map((name) => (
           <button
             key={name}
             type="button"
             role="tab"
-            aria-selected={drawerTab === name}
-            onClick={() => onDrawerTab(drawerTab === name ? null : name)}
+            aria-selected={panel === name}
+            onClick={() => onPanel(name)}
           >
             {t(`layout.tab.${name}`)}
           </button>
@@ -37,5 +37,3 @@ export function Titlebar({ drawerTab, onDrawerTab, inspectorOpen, onInspector }:
     </header>
   )
 }
-// Keep old name for any stray import during migration
-export type Pane = DrawerTab | 'terminals'

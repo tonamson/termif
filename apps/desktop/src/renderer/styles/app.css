@@ -104,29 +104,23 @@
 
 .layout__main {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   min-width: 0;
   background: var(--bg-app);
 }
 
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.panel[hidden] { display: none; }
+
 .titlebar { justify-content: flex-start; gap: var(--space-3); }
 .titlebar__panes { margin-inline: auto; }
 .titlebar__inspector { -webkit-app-region: no-drag; }
-
-.drawer {
-  display: flex;
-  flex-direction: column;
-  height: min(var(--drawer-h), 70%);
-  min-height: 0;
-  border-top: 1px solid var(--border-strong);
-  background: var(--bg-surface);
-  z-index: var(--z-drawer);
-}
-.drawer__handle { height: 5px; margin-top: -3px; cursor: row-resize; }
-.drawer__handle:hover { background: var(--accent); }
-.drawer__body { flex: 1; min-height: 0; }
-.drawer__empty { padding: var(--space-5); color: var(--fg-subtle); text-align: center; }
 
 /* --- Sidebar: sticky search, scrolling list, account foot --------------- */
 .host-list {

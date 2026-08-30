@@ -129,8 +129,10 @@ export const en = {
   'snippet.new': 'New snippet',
   'snippet.removeGlyph': '×',
 
+  'layout.tab.terminal': 'terminal',
   'layout.tab.files': 'files',
   'layout.tab.forwards': 'forwards',
+  'layout.panels': 'Main panels',
   'layout.inspector': 'Inspector',
 } as const
 
