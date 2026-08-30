@@ -32,6 +32,7 @@ not "not written yet" — it is out of v1 scope.
 | 6 | [`plans/2026-08-30-termif-06-local-only.md`](plans/2026-08-30-termif-06-local-only.md) — everything in one SQLite file, no vault, no Google | 12 | **complete (2026-08-30)** — 290 tests green (83 core + 207 desktop), 30 IPC channels, 0 Google channels | 7 |
 | 7 | [`plans/2026-08-30-termif-07-live-acceptance.md`](plans/2026-08-30-termif-07-live-acceptance.md) — live acceptance: real server, packaged `.dmg` | 3 layers | not started, blocked by 6 | — |
 | 8 | [`plans/2026-08-30-termif-08-desktop-layout.md`](plans/2026-08-30-termif-08-desktop-layout.md) — layout: drawer, inspector, SFTP menus, layout tests | 15 | **complete (2026-08-30)** — 255 desktop tests green (83 core), drawer + resizable sidebar + grouping + tab overflow + passphrase + inspector/sheet + hostile fixture | — |
+| 9 | [`plans/2026-08-30-termif-09-store-shape-migration.md`](plans/2026-08-30-termif-09-store-shape-migration.md) — repair credentials table by shape, not version | 6 | **complete (2026-08-30)** — 21 core tests green, vault-era DB repaired, passphrase column ensured | — |
 
 Plans 6 and 7 were added on 2026-08-30 and run last. Plan 6 removes the
 encryption and sync layers; Plan 7 then verifies what remains against a real
