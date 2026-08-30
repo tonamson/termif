@@ -38,10 +38,10 @@ export function TerminalTabs({ app }: { app: App }) {
     }
   }, [app.sessions, tabStore])
 
-  const handleCloseTab = (tabId: string, e?: React.SyntheticEvent) => {
+  const handleCloseTab = (tabId: string, e?: React.SyntheticEvent | MouseEvent) => {
     if (e) {
-      e.stopPropagation()
-      e.preventDefault()
+      e.stopPropagation?.()
+      e.preventDefault?.()
     }
     void window.termif?.app?.log('info', 'tabs:close', `User triggered close for tabId: ${tabId}`)
 
@@ -130,11 +130,18 @@ export function TerminalTabs({ app }: { app: App }) {
                 className="terminal-tab__close"
                 aria-label={t('terminal.close', { title: tab.title })}
                 title="Đóng tab"
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  void window.termif?.app?.log('info', 'tabs:close_pointerdown', `PointerDown close on tab ${tab.id}`)
+                  handleCloseTab(tab.id, e)
+                }}
                 onMouseDown={(e) => {
+                  e.stopPropagation()
                   void window.termif?.app?.log('info', 'tabs:close_mousedown', `MouseDown close on tab ${tab.id}`)
                   handleCloseTab(tab.id, e)
                 }}
                 onClick={(e) => {
+                  e.stopPropagation()
                   void window.termif?.app?.log('info', 'tabs:close_click', `Click close on tab ${tab.id}`)
                   handleCloseTab(tab.id, e)
                 }}
