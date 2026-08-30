@@ -24,9 +24,15 @@ export const en = {
   'vault.locked': 'Vault locked',
   'vault.unlock.prompt': 'Enter your master password',
   'vault.unlock.wrong': 'That password did not unlock the vault.',
+  'vault.unlock.submit': 'Unlock',
+  'vault.unlock.device': 'Unlock with this device',
   'vault.setup.title': 'Choose a master password',
   'vault.setup.warning':
     'If you lose this password, the stored credentials cannot be recovered. Nothing is sent to Google that can decrypt them.',
+  'vault.setup.confirm': 'Confirm',
+  'vault.setup.create': 'Create vault',
+  'vault.setup.tooShort': 'Use at least {N} characters.',
+  'vault.setup.mismatch': 'Those do not match.',
   'vault.remember': 'Unlock with biometrics on this device',
 
   'sync.idle': 'Synced {when}',

@@ -55,13 +55,13 @@ export function UnlockScreen({ error, onUnlock, onDeviceUnlock }: UnlockScreenPr
         {error !== null && <p role="alert">{error}</p>}
 
         <button type="submit" disabled={busy}>
-          Unlock
+          {t('vault.unlock.submit')}
         </button>
       </form>
 
       {onDeviceUnlock !== null && (
         <button type="button" onClick={() => void onDeviceUnlock()}>
-          Unlock with this device
+          {t('vault.unlock.device')}
         </button>
       )}
     </main>

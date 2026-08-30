@@ -40,16 +40,16 @@ export function SetupScreen({ onSetup }: SetupScreenProps) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {tooShort && <p role="alert">Use at least {MIN_LENGTH} characters.</p>}
+        {tooShort && <p role="alert">{t('vault.setup.tooShort', { N: MIN_LENGTH })}</p>}
 
-        <label htmlFor="confirm-password">Confirm</label>
+        <label htmlFor="confirm-password">{t('vault.setup.confirm')}</label>
         <input
           id="confirm-password"
           type="password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
         />
-        {mismatch && <p role="alert">Those do not match.</p>}
+        {mismatch && <p role="alert">{t('vault.setup.mismatch')}</p>}
 
         <label htmlFor="remember-setup">
           <input
@@ -62,7 +62,7 @@ export function SetupScreen({ onSetup }: SetupScreenProps) {
         </label>
 
         <button type="submit" disabled={!canSubmit}>
-          Create vault
+          {t('vault.setup.create')}
         </button>
       </form>
     </main>
