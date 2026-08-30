@@ -55,6 +55,9 @@ const api: TermifApi = {
       }
     },
     getVersions: () => ipcRenderer.invoke(CHANNELS.appGetVersions),
+    log: (level, scope, message) => ipcRenderer.invoke(CHANNELS.appLog, level, scope, message),
+    getLogPath: () => ipcRenderer.invoke(CHANNELS.appGetLogPath),
+    openLog: () => ipcRenderer.invoke(CHANNELS.appOpenLog),
   },
 }
 

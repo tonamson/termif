@@ -3,6 +3,7 @@ import { SCHEMA_VERSION, type SqlValue } from '@termif/core'
 import { CHANNELS, type DbStatement, type SerialisedDirEntry } from '../shared/ipc.js'
 import type { DesktopDb } from './db.js'
 import { initNative, native, serialiseDirEntry, serialiseEvents } from './native.js'
+import { getLogPath, writeLog } from './logger.js'
 
 export interface HandlerDeps {
   db: DesktopDb
@@ -46,6 +47,9 @@ export function handlerNames(): string[] {
     CHANNELS.appOpenExternal,
     CHANNELS.appPlatformKind,
     CHANNELS.appGetVersions,
+    CHANNELS.appLog,
+    CHANNELS.appGetLogPath,
+    CHANNELS.appOpenLog,
   ]
 }
 
@@ -55,13 +59,29 @@ const id = (value: string): bigint => BigInt(value)
 export function registerHandlers(deps: HandlerDeps): void {
   // ---- ssh ----
   ipcMain.handle(CHANNELS.sshInit, (_e, path: string) => {
+    writeLog('info', 'ssh', `init ${path}`)
     initNative(path)
   })
-  ipcMain.handle(CHANNELS.sshConnect, async (_e, cfg: unknown) =>
-    (await native().connect(cfg)).toString(),
-  )
+  ipcMain.handle(CHANNELS.sshConnect, async (_e, cfg: unknown) => {
+    writeLog('info', 'ssh', `connect ${(cfg as {host?: string})?.host ?? ''}:${(cfg as {port?: number})?.port ?? ''}`)
+    try {
+      const r = (await native().connect(cfg)).toString()
+      writeLog('info', 'ssh', `connect ok -> ${r}`)
+      return r
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      writeLog('error', 'ssh', `connect failed: ${msg}`)
+      throw e
+    }
+  })
   ipcMain.handle(CHANNELS.sshDisconnect, async (_e, sessionId: string) => {
-    await native().disconnect(id(sessionId))
+    writeLog('info', 'ssh', `disconnect ${sessionId}`)
+    try {
+      await native().disconnect(id(sessionId))
+    } catch (e) {
+      writeLog('error', 'ssh', `disconnect failed: ${String(e)}`)
+      throw e
+    }
   })
   ipcMain.handle(
     CHANNELS.sshTrustHostKey,
@@ -165,13 +185,31 @@ export function registerHandlers(deps: HandlerDeps): void {
 
   // ---- db ----
   ipcMain.handle(CHANNELS.dbExec, async (_e, sql: string, params: SqlValue[]) => {
-    await deps.db.exec(sql, params)
+    const preview = sql.replace(/\s+/g, ' ').slice(0, 120)
+    writeLog('debug', 'db', `exec ${preview} [${params.length}]`)
+    try {
+      await deps.db.exec(sql, params)
+    } catch (e) {
+      writeLog('error', 'db', `exec failed ${preview}: ${String(e)}`)
+      throw e
+    }
   })
-  ipcMain.handle(CHANNELS.dbQuery, async (_e, sql: string, params: SqlValue[]) =>
-    deps.db.query(sql, params),
-  )
+  ipcMain.handle(CHANNELS.dbQuery, async (_e, sql: string, params: SqlValue[]) => {
+    try {
+      return await deps.db.query(sql, params)
+    } catch (e) {
+      writeLog('error', 'db', `query failed ${sql.slice(0, 80)}: ${String(e)}`)
+      throw e
+    }
+  })
   ipcMain.handle(CHANNELS.dbTransaction, async (_e, statements: DbStatement[]) => {
-    await deps.db.transaction(statements)
+    writeLog('debug', 'db', `transaction ${statements.length} stmts`)
+    try {
+      await deps.db.transaction(statements)
+    } catch (e) {
+      writeLog('error', 'db', `transaction failed: ${String(e)}`)
+      throw e
+    }
   })
 
   // ---- app ----
@@ -199,5 +237,13 @@ export function registerHandlers(deps: HandlerDeps): void {
       ? Number(Object.values(rows[0]!)[0] ?? 0)
       : 0
     return { appVersion: app.getVersion(), schemaVersion: SCHEMA_VERSION, userVersion }
+  })
+  ipcMain.handle(CHANNELS.appLog, (_e, level: string, scope: string, message: string) => {
+    writeLog(level, scope, message)
+  })
+  ipcMain.handle(CHANNELS.appGetLogPath, () => getLogPath())
+  ipcMain.handle(CHANNELS.appOpenLog, async () => {
+    const p = getLogPath()
+    if (p !== null) await shell.openPath(p)
   })
 }

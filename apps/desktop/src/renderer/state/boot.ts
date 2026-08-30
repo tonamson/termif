@@ -18,8 +18,12 @@ export interface App {
   forwards: ForwardManager
 }
 
+import { logToFile } from './log.js'
+
 export async function bootApp(platform: Platform): Promise<App> {
+  logToFile('info', 'boot', 'Store.open start')
   const store = await Store.open(platform)
+  logToFile('info', 'boot', 'Store.open ok')
   const prefs = createPrefsStore({ store })
   await prefs.load()
 

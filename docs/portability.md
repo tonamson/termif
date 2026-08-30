@@ -99,3 +99,21 @@ A bug report should include both:
 
 The two move at different rates and are shown together by
 `termif:app:getVersions` (main) / `window.termif.app.getVersions()` (renderer).
+
+## Debug logs
+
+Termif writes all logs to a file for debugging:
+
+- **macOS:** `~/Library/Application Support/Termif/logs/termif.log`
+- **Windows:** `%APPDATA%\Termif\logs\termif.log`
+
+The file contains timestamped entries for app start, DB migrations, SSH
+connect/disconnect (host, port, fingerprint, errors), DB exec/transaction,
+and renderer connect attempts. Uncaught exceptions and unhandled rejections
+are also captured. The file is rotated at 5 MB (keeps 5 old files).
+
+From the renderer: `await window.termif.app.getLogPath()` returns the path,
+`await window.termif.app.openLog()` opens it in the OS, and
+`window.termif.app.log(level, scope, message)` appends a line.
+From the main process: `writeLog(level, scope, message)` in
+`apps/desktop/src/main/logger.ts`.

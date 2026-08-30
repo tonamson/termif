@@ -4,6 +4,7 @@ import { openDatabase } from './db.js'
 import { registerHandlers } from './handlers.js'
 import { prepareKnownHosts } from './knownHosts.js'
 import { initNative } from './native.js'
+import { initLogger, writeLog } from './logger.js'
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -56,6 +57,8 @@ function createWindow(): BrowserWindow {
 
 void app.whenReady().then(async () => {
   const userData = app.getPath('userData')
+  const logPath = initLogger(userData)
+  writeLog('info', 'app', `Termif starting v${app.getVersion()} userData=${userData} log=${logPath}`)
   const db = openDatabase(join(userData, 'termif.sqlite'))
 
   await prepareKnownHosts(db, userData, initNative)

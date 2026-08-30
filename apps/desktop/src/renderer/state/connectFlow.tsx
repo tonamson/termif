@@ -1,5 +1,6 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { CoreError, parseFfiError, t, type ConnectCredential, type Host, type Store } from '@termif/core'
+import { logToFile } from './log.js'
 import { HostKeyPrompt } from '../views/HostKeyPrompt.js'
 import type { App } from './boot.js'
 import type { HostStore } from './hostStore.js'
@@ -96,17 +97,26 @@ export function useConnectFlow(app: App, hostStore: HostStore): ConnectFlow {
 
   const attempt = useCallback(
     async (host: Host): Promise<void> => {
+      logToFile('info', 'connect', `attempt ${host.label} ${host.username}@${host.hostname}:${host.port}`)
       const credential = await resolveCredential(app.store, host)
       if (credential === null) {
         // No stored credential: the host form is where one gets added, so say
         // so rather than opening a second password prompt here.
+        logToFile('warn', 'connect', `no credential for ${host.id}`)
         setLastError(t('connect.noCredential'))
         return
       }
 
-      const sessionId = await app.sessions.connect(host, credential)
-      const tabId = await app.sessions.openTab(sessionId, 80, 24)
-      app.tabs.add({ id: tabId, sessionId, title: host.label })
+      try {
+        const sessionId = await app.sessions.connect(host, credential)
+        logToFile('info', 'connect', `connected ${host.id} -> ${sessionId}`)
+        const tabId = await app.sessions.openTab(sessionId, 80, 24)
+        app.tabs.add({ id: tabId, sessionId, title: host.label })
+        logToFile('info', 'connect', `tab ${tabId} opened`)
+      } catch (e) {
+        logToFile('error', 'connect', `connect failed ${host.id}: ${String(e)}`)
+        throw e
+      }
     },
     [app],
   )
@@ -115,12 +125,17 @@ export function useConnectFlow(app: App, hostStore: HostStore): ConnectFlow {
     async (hostId: string): Promise<void> => {
       setLastError(null)
       const host = hostStore.get().hosts.find((h) => h.id === hostId)
-      if (host === undefined) return
+      if (host === undefined) {
+        logToFile('warn', 'connect', `start: host ${hostId} not found`)
+        return
+      }
+      logToFile('info', 'connect', `start ${hostId}`)
 
       try {
         await attempt(host)
       } catch (error) {
         const failure = classifyConnectError(error)
+        logToFile('error', 'connect', `start failed ${hostId}: ${String(error)} -> ${failure.kind}`)
         if (failure.kind === 'message') {
           setLastError(failure.text)
           return
