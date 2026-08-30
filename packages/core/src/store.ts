@@ -121,52 +121,11 @@ export class Store {
       await platform.db.exec(sql)
     }
     await repairCredentials(platform.db)
-    const current = await platform.db.query<{ value: string }>(
-      'SELECT value FROM meta WHERE key = ?',
-      ['schemaVersion'],
+    await platform.db.exec(
+      'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      ['schemaVersion', String(SCHEMA_VERSION)],
     )
-    const version = current[0]?.value ?? null
-    if (version === null) {
-      await platform.db.exec(
-        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-        ['schemaVersion', String(SCHEMA_VERSION)],
-      )
-      // New DB at version 3 needs passphrase column even though MIGRATIONS creates old shape
-      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
-    } else if (version === '1') {
-      await platform.db.exec('DROP TABLE IF EXISTS credentials')
-      await platform.db.exec(MIGRATIONS[1]!)
-      await platform.db.exec(MIGRATIONS[6]!)
-      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
-      for (const k of STALE_META_KEYS) {
-        await platform.db.exec('DELETE FROM meta WHERE key = ?', [k])
-      }
-      await platform.db.exec(
-        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-        ['schemaVersion', String(SCHEMA_VERSION)],
-      )
-    } else if (version === '2') {
-      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
-      await platform.db.exec(
-        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-        ['schemaVersion', String(SCHEMA_VERSION)],
-      )
-    }
-    // Ensure column exists even if version already 3 but column missing (e.g. buggy earlier build)
-    await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
     return new Store(platform.db, platform.now)
-  }
-
-  async migrate(): Promise<void> {
-    const current = await this.#db.query<{ value: string }>('SELECT value FROM meta WHERE key = ?', ['schemaVersion'])
-    const version = current[0]?.value ?? null
-    if (version === '2') {
-      await this.#db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
-      await this.#db.exec(
-        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-        ['schemaVersion', String(SCHEMA_VERSION)],
-      )
-    }
   }
 
   onChange(listener: ChangeListener): () => void {
