@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { defineConfig } from 'vitest/config'
 
 /**
@@ -7,6 +8,11 @@ import { defineConfig } from 'vitest/config'
  * renderer tests (components + stores) get jsdom.
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      'better-sqlite3': path.resolve(__dirname, 'test/__mocks__/better-sqlite3.ts'),
+    },
+  },
   test: {
     environment: 'node',
     include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
