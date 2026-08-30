@@ -8,15 +8,16 @@ import { TerminalTabs } from '../views/TerminalTabs.js'
 import { SidebarResizer } from '../views/SidebarResizer.js'
 import { SftpBrowser } from '../views/SftpBrowser.js'
 import { ForwardPanel } from '../views/ForwardPanel.js'
-import { Titlebar, type Pane } from '../views/Titlebar.js'
+import { Titlebar } from '../views/Titlebar.js'
+import { Drawer } from '../views/Drawer.js'
 import { useConnectFlow } from '../state/connectFlow.js'
+import { t } from '@termif/core'
 
 export function MainLayout({ app }: { app: App }) {
   const [hostStore] = useState(() => createHostStore({ store: app.store }))
   const hosts = useStore(hostStore)
   const prefs = useStore(app.prefs)
 
-  const [pane, setPane] = useState<Pane>('terminals')
   const [editing, setEditing] = useState<{ id: string | null } | null>(null)
 
   const connect = useConnectFlow(app, hostStore)
@@ -26,12 +27,39 @@ export function MainLayout({ app }: { app: App }) {
     return app.store.onChange(() => void hostStore.refresh())
   }, [app.store, hostStore])
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'j') {
+        event.preventDefault()
+        app.prefs.set('drawerTab', app.prefs.get().drawerTab === null ? 'files' : null)
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
+        event.preventDefault()
+        void hostStore
+          .save({ label: 'New host', hostname: '', port: 22, username: '', tags: [], groupId: null }, null)
+          .then((saved) => {
+            if (saved) {
+              setEditing({ id: saved.id })
+              app.prefs.set('inspectorOpen', true)
+            }
+          })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [app.prefs, hostStore])
+
   const editingHost =
     editing?.id == null ? null : (hosts.hosts.find((h) => h.id === editing.id) ?? null)
 
   return (
     <div className="shell">
-      <Titlebar pane={pane} onPaneChange={setPane} />
+      <Titlebar
+        drawerTab={prefs.drawerTab}
+        onDrawerTab={(tab) => app.prefs.set('drawerTab', tab)}
+        inspectorOpen={prefs.inspectorOpen}
+        onInspector={(open) => app.prefs.set('inspectorOpen', open)}
+      />
       <div className="layout" style={{ ['--sidebar-w' as string]: `${prefs.sidebarWidth}px` }}>
         <aside className="layout__sidebar">
           <HostList
@@ -66,12 +94,20 @@ export function MainLayout({ app }: { app: App }) {
               }}
               onCancel={() => setEditing(null)}
             />
-          ) : pane === 'terminals' ? (
-            <TerminalTabs app={app} />
-          ) : pane === 'files' ? (
-            <SftpBrowser app={app} />
           ) : (
-            <ForwardPanel app={app} />
+            <>
+              <TerminalTabs app={app} />
+              {prefs.drawerTab !== null && (
+                <Drawer
+                  tab={prefs.drawerTab}
+                  height={prefs.drawerHeight}
+                  onHeight={(px) => app.prefs.set('drawerHeight', px)}
+                  onClose={() => app.prefs.set('drawerTab', null)}
+                >
+                  {prefs.drawerTab === 'files' ? <SftpBrowser app={app} /> : <ForwardPanel app={app} />}
+                </Drawer>
+              )}
+            </>
           )}
         </main>
       </div>

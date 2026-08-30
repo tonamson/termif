@@ -3,40 +3,45 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Titlebar } from '../../src/renderer/views/Titlebar.js'
 
+const base = {
+  drawerTab: null as 'files' | 'forwards' | null,
+  onDrawerTab: vi.fn(),
+  inspectorOpen: false,
+  onInspector: vi.fn(),
+}
+
 describe('Titlebar', () => {
-  it('exposes the three panes as a single tablist', () => {
-    render(<Titlebar pane="terminals" onPaneChange={() => {}} />)
-
-    const tabs = screen.getAllByRole('tab')
-    expect(tabs).toHaveLength(3)
+  it('offers two drawer buttons, not three panes', () => {
+    render(<Titlebar {...base} />)
+    expect(screen.getAllByRole('tab')).toHaveLength(2)
+    expect(screen.queryByRole('tab', { name: /terminal/i })).not.toBeInTheDocument()
   })
 
-  it('marks the active pane selected', () => {
-    render(<Titlebar pane="files" onPaneChange={() => {}} />)
-
-    const selected = screen.getAllByRole('tab').filter(
-      (tab) => tab.getAttribute('aria-selected') === 'true',
-    )
-    expect(selected).toHaveLength(1)
+  it('opens the drawer on the pressed tab when it is closed', async () => {
+    const onDrawerTab = vi.fn()
+    render(<Titlebar {...base} onDrawerTab={onDrawerTab} />)
+    await userEvent.click(screen.getByRole('tab', { name: /files/i }))
+    expect(onDrawerTab).toHaveBeenCalledWith('files')
   })
 
-  it('reports a pane change when another tab is clicked', async () => {
-    const onPaneChange = vi.fn()
-    render(<Titlebar pane="terminals" onPaneChange={onPaneChange} />)
-
-    const [, second] = screen.getAllByRole('tab')
-    await userEvent.click(second!)
-
-    expect(onPaneChange).toHaveBeenCalledWith('files')
+  it('closes the drawer when the already-open tab is pressed again', async () => {
+    const onDrawerTab = vi.fn()
+    render(<Titlebar {...base} drawerTab="files" onDrawerTab={onDrawerTab} />)
+    await userEvent.click(screen.getByRole('tab', { name: /files/i }))
+    expect(onDrawerTab).toHaveBeenCalledWith(null)
   })
 
-  it('renders the class hooks the stylesheet targets', () => {
-    const { container } = render(<Titlebar pane="terminals" onPaneChange={() => {}} />)
+  it('switches tabs without closing when a different tab is pressed', async () => {
+    const onDrawerTab = vi.fn()
+    render(<Titlebar {...base} drawerTab="files" onDrawerTab={onDrawerTab} />)
+    await userEvent.click(screen.getByRole('tab', { name: /forward/i }))
+    expect(onDrawerTab).toHaveBeenCalledWith('forwards')
+  })
 
-    // `.titlebar` carries the drag region and `.titlebar__panes` opts back out
-    // of it. Whether the opt-out works can only be checked in a real window
-    // (Task 4, step 8) — this only guards the hooks the CSS needs.
-    expect(container.querySelector('.titlebar')).not.toBeNull()
-    expect(container.querySelector('.titlebar__panes')).not.toBeNull()
+  it('toggles the inspector', async () => {
+    const onInspector = vi.fn()
+    render(<Titlebar {...base} onInspector={onInspector} />)
+    await userEvent.click(screen.getByRole('button', { name: /inspector/i }))
+    expect(onInspector).toHaveBeenCalledWith(true)
   })
 })

@@ -21,7 +21,8 @@ export const en = {
   'hostkey.mismatch.body':
     'The key changed from {expected} to {got}. This can mean the server was rebuilt, or that the connection is being intercepted. Termif will not connect until you remove the old key deliberately.',
 
-  'terminal.empty': 'Connect to a host to open a terminal.',
+  'terminal.empty': 'Select a host, or ⌘N to add one',
+  'sftp.empty.noSession': 'Connect to a host to browse files',
   'terminal.close': 'Close {title}',
 
   'session.reconnecting': 'Connection lost. Reconnecting…',
@@ -119,9 +120,9 @@ export const en = {
   'snippet.new': 'New snippet',
   'snippet.removeGlyph': '×',
 
-  'layout.tab.terminals': 'terminals',
   'layout.tab.files': 'files',
   'layout.tab.forwards': 'forwards',
+  'layout.inspector': 'Inspector',
 } as const
 
 export type MessageKey = keyof typeof en

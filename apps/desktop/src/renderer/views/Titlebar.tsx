@@ -1,33 +1,41 @@
 import { t } from '@termif/core'
 
-export type Pane = 'terminals' | 'files' | 'forwards'
+export type DrawerTab = 'files' | 'forwards'
 
 export interface TitlebarProps {
-  pane: Pane
-  onPaneChange(pane: Pane): void
+  drawerTab: DrawerTab | null
+  onDrawerTab(tab: DrawerTab | null): void
+  inspectorOpen: boolean
+  onInspector(open: boolean): void
 }
 
-/**
- * The window is frameless (see src/main/index.ts), so this bar is both the
- * drag handle and the pane switcher. Anything clickable inside it must opt out
- * of the drag region in CSS, or it stops responding to clicks.
- */
-export function Titlebar({ pane, onPaneChange }: TitlebarProps) {
+export function Titlebar({ drawerTab, onDrawerTab, inspectorOpen, onInspector }: TitlebarProps) {
   return (
     <header className="titlebar">
       <div className="titlebar__panes" role="tablist">
-        {(['terminals', 'files', 'forwards'] as const).map((name) => (
+        {(['files', 'forwards'] as const).map((name) => (
           <button
             key={name}
             type="button"
             role="tab"
-            aria-selected={pane === name}
-            onClick={() => onPaneChange(name)}
+            aria-selected={drawerTab === name}
+            onClick={() => onDrawerTab(drawerTab === name ? null : name)}
           >
             {t(`layout.tab.${name}`)}
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        className="titlebar__inspector"
+        aria-pressed={inspectorOpen}
+        aria-label={t('layout.inspector')}
+        onClick={() => onInspector(!inspectorOpen)}
+      >
+        ⓘ
+      </button>
     </header>
   )
 }
+// Keep old name for any stray import during migration
+export type Pane = DrawerTab | 'terminals'
