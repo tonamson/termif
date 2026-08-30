@@ -129,6 +129,7 @@ export function TerminalTabs({ app }: { app: App }) {
                 type="button"
                 className="terminal-tab__close"
                 aria-label={t('terminal.close', { title: tab.title })}
+                title="Đóng tab"
                 onMouseDown={(e) => {
                   void window.termif?.app?.log('info', 'tabs:close_mousedown', `MouseDown close on tab ${tab.id}`)
                   handleCloseTab(tab.id, e)
@@ -138,7 +139,9 @@ export function TerminalTabs({ app }: { app: App }) {
                   handleCloseTab(tab.id, e)
                 }}
               >
-                ×
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
               </button>
             </div>
           ))}

@@ -339,20 +339,32 @@ body,
   background: transparent;
   border: none;
   color: var(--text-muted);
-  margin-left: 6px;
+  margin-left: 8px;
   cursor: pointer;
-  font-size: 12px;
-  border-radius: 50%;
-  width: 14px;
-  height: 14px;
-  display: flex;
+  border-radius: var(--radius-sm);
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  position: relative;
+  z-index: 10;
+  transition: all var(--transition-fast);
 }
 
 .terminal-tab__close:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   color: var(--text-primary);
+}
+
+.terminal-tab__close svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  pointer-events: none;
 }
 
 .terminal-canvas-container,
