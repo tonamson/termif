@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useEffect, useState, type KeyboardEvent } from 'react'
 import { t } from '@termif/core'
 import type { Host } from '@termif/core'
 
@@ -29,6 +29,11 @@ export function HostList({
   // with the same value via `query`, so a controlled input would otherwise be
   // reset by React on every keystroke before `query` catches up.
   const [searchText, setSearchText] = useState(query)
+
+  // Re-sync when the store's query changes from elsewhere, so the box and the
+  // empty-state message (which reads the `query` prop) never diverge. Local
+  // typing is unaffected: this effect fires only when `query` changes.
+  useEffect(() => setSearchText(query), [query])
 
   const onKeyDown = (event: KeyboardEvent<HTMLLIElement>, id: string): void => {
     if (event.key === 'Enter') {
