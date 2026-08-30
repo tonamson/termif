@@ -19,9 +19,13 @@ export function TerminalTabs({ app }: { app: App }) {
   // Tabs are opened by the connect flow through the session manager, so this
   // component learns about them by listening rather than by being told.
   useEffect(() => {
-    const offClosed = app.sessions.onTabClosed((tabId) => tabStore.close(tabId))
+    const offClosed = app.sessions.onTabClosed((tabId) => {
+      void window.termif?.app?.log('info', 'tabs:event', `onTabClosed fired for ${tabId}`)
+      tabStore.close(tabId)
+    })
 
     const offState = app.sessions.onSessionState((sessionId, state) => {
+      void window.termif?.app?.log('info', 'session:state', `${sessionId} -> ${state}`)
       tabStore.setSessionState(
         sessionId,
         state === 'connected' ? 'live' : state === 'reconnecting' ? 'reconnecting' : 'closed',
@@ -39,19 +43,23 @@ export function TerminalTabs({ app }: { app: App }) {
       e.stopPropagation()
       e.preventDefault()
     }
+    void window.termif?.app?.log('info', 'tabs:close', `User triggered close for tabId: ${tabId}`)
 
     // Immediately remove from UI and activate neighboring tab if closing active
     const currentIndex = tabs.findIndex((t) => t.id === tabId)
     if (activeId === tabId && tabs.length > 1) {
       const nextTab = tabs[currentIndex + 1] ?? tabs[currentIndex - 1]
       if (nextTab) {
+        void window.termif?.app?.log('info', 'tabs:activate', `Auto-activating sibling tab: ${nextTab.id}`)
         tabStore.activate(nextTab.id)
       }
     }
 
     tabStore.close(tabId)
     // Async cleanup of background SSH channel
-    void app.sessions.closeTab(tabId).catch(() => {})
+    void app.sessions.closeTab(tabId).catch((err) => {
+      void window.termif?.app?.log('error', 'tabs:closeTab_error', String(err))
+    })
   }
 
   useEffect(() => {
@@ -65,6 +73,7 @@ export function TerminalTabs({ app }: { app: App }) {
       }
       if (event.key.toLowerCase() === 'w' && activeId !== null) {
         event.preventDefault()
+        void window.termif?.app?.log('info', 'tabs:shortcut', `Cmd/Ctrl+W triggered for active tab ${activeId}`)
         handleCloseTab(activeId)
       }
     }
@@ -108,7 +117,10 @@ export function TerminalTabs({ app }: { app: App }) {
                 type="button"
                 role="tab"
                 aria-selected={tab.id === activeId}
-                onClick={() => tabStore.activate(tab.id)}
+                onClick={() => {
+                  void window.termif?.app?.log('info', 'tabs:select', `Clicked tab ${tab.id} (${tab.title})`)
+                  tabStore.activate(tab.id)
+                }}
               >
                 {tab.title}
                 {tab.state === 'reconnecting' && ' …'}
@@ -118,13 +130,11 @@ export function TerminalTabs({ app }: { app: App }) {
                 className="terminal-tab__close"
                 aria-label={t('terminal.close', { title: tab.title })}
                 onMouseDown={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
+                  void window.termif?.app?.log('info', 'tabs:close_mousedown', `MouseDown close on tab ${tab.id}`)
                   handleCloseTab(tab.id, e)
                 }}
                 onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
+                  void window.termif?.app?.log('info', 'tabs:close_click', `Click close on tab ${tab.id}`)
                   handleCloseTab(tab.id, e)
                 }}
               >
@@ -162,6 +172,7 @@ export function TerminalTabs({ app }: { app: App }) {
           x={menu.x}
           y={menu.y}
           onPick={(id) => {
+            void window.termif?.app?.log('info', 'tabs:menu_pick', `Selected hidden tab ${id}`)
             tabStore.activate(id)
             setMenu(null)
           }}
