@@ -37,6 +37,18 @@
 
   --motion-fast: 120ms ease;
 
-  --titlebar-height: 38px;
-  --sidebar-width: 260px;
+  --space-0: 2px;
+
+  --titlebar-h: 38px;
+  --sidebar-w: 260px;
+  --sidebar-rail-w: 48px;
+  --inspector-w: 240px;
+
+  --z-drawer: 1;
+  --z-inspector: 5;
+  --z-sheet: 10;
+  --z-palette: 20;
+
+  --titlebar-height: var(--titlebar-h);
+  --sidebar-width: var(--sidebar-w);
 }

@@ -44,7 +44,7 @@
 /* --- Layout ------------------------------------------------------------- */
 .layout {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
 }
@@ -260,7 +260,7 @@
 .snippet-palette {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: var(--z-sheet);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -385,7 +385,8 @@
 .transfer-list {
   border-top: 1px solid var(--border);
   padding: var(--space-2);
-  max-height: 30%;
+  max-height: 160px;
+  min-height: 0;
   overflow-y: auto;
 }
 .transfer-list li {

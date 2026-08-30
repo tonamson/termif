@@ -164,7 +164,7 @@ label {
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: var(--z-sheet);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -201,6 +201,24 @@ progress::-webkit-progress-value {
 @keyframes termif-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
+}
+
+/* --- Layout invariants -------------------------------------------------- */
+/* A grid or flex child defaults to `min-width: auto`, which means it can never
+   be narrower than its content. One long hostname then widens the whole row
+   instead of being clipped. Every text-bearing cell opts out. */
+.u-clip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A scroll region inside a flex column needs an explicit zero minimum too, or
+   it grows to fit its content and the scrollbar never appears. */
+.u-scroll {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
