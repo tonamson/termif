@@ -35,6 +35,7 @@ not "not written yet" — it is out of v1 scope.
 | 9 | [`plans/2026-08-30-termif-09-store-shape-migration.md`](plans/2026-08-30-termif-09-store-shape-migration.md) — repair credentials table by shape, not version | 6 | **complete (2026-08-30)** — 21 core tests green, vault-era DB repaired, passphrase column ensured | — |
 | 10 | [`plans/2026-08-30-termif-10-schema-versioning.md`](plans/2026-08-30-termif-10-schema-versioning.md) — numbered migration runner on `PRAGMA user_version` | 6 | **complete (2026-08-30)** — MIGRATIONS is string[][], SCHEMA_VERSION derived, adopt+runMigrations, vault repair preserved, 89 core tests green, rewrite pattern proven, docs + diagnostics | — |
 | 12 | [`plans/2026-08-30-termif-12-host-connection-status.md`](plans/2026-08-30-termif-12-host-connection-status.md) — sidebar dot follows session state, release 0.1.6 | 4 | **complete (2026-08-30)** — hostStates() strongest wins, MainLayout subscribes, 95 core + 270 desktop tests green, Termif-0.1.6-arm64.dmg 104M / Termif-0.1.6.dmg 108M | — |
+| 13 | [`plans/2026-08-30-termif-13-main-panels.md`](plans/2026-08-30-termif-13-main-panels.md) — terminal-first exclusive main panels, SFTP via titlebar, real geometry tier | 5 | **complete (2026-08-30)** — panels + geometry tier, 273 desktop tests green, 0.1.7 | — |
 
 Plans 6 and 7 were added on 2026-08-30 and run last. Plan 6 removes the
 encryption and sync layers; Plan 7 then verifies what remains against a real
@@ -75,7 +76,16 @@ Three signals, in increasing order of trustworthiness:
 
 ## Work still owed
 
-Plan 6, then Plan 5. Everything else in v1's spec is built.
+**Plan 13 first (2026-08-30).** The drawer shipped inverted — the SFTP drawer
+landed in the main grid's flexible row and the terminal in the auto row
+(`app.css:107` vs `MainLayout.tsx`), and `drawerTab` persistence made every
+launch reopen SFTP. The owner chose the Termius model instead: three exclusive
+main panels (Terminal default / Files / Forwards) switched from the titlebar.
+Spec `2026-08-30-termif-main-panels.md` supersedes the drawer paragraphs of
+the layout spec §5; `Drawer.tsx`, ⌘J, and the `drawerTab`/`drawerHeight`
+prefs are deleted. The Playwright geometry tier that Plan 8 promised but
+shipped as a self-skipping placeholder is delivered for real in Task 4.
+After Plan 13: Plan 7. Everything else in v1's spec is built.
 
 **Reversal, 2026-08-30.** The master password, the Argon2id vault, and Google
 Sheets sync are being removed — see Plan 6 for the reasoning and the full delete
