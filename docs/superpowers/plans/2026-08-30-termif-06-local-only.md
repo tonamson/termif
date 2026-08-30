@@ -191,15 +191,15 @@ Before the vault, because `sheet/rows.ts` and `sheet/client.ts` both reference
 
 ### Task 5 — delete the vault
 
-- [ ] Delete `core/src/vault.ts` and `core/test/vault.test.ts`.
-- [ ] Prune `core/src/index.ts`; remove every `vault.*` key from `i18n/en.ts`
+- [x] Delete `core/src/vault.ts` and `core/test/vault.test.ts`.
+- [x] Prune `core/src/index.ts`; remove every `vault.*` key from `i18n/en.ts`
       and the `vault_locked`, `vault_wrong_password`, `vault_bad_ciphertext`
       codes from `core/src/errors.ts` if nothing else raises them — grep first.
-- [ ] Drop `@noble/ciphers` and `@noble/hashes` from
+- [x] Drop `@noble/ciphers` and `@noble/hashes` from
       `packages/core/package.json`, then `npm install` so the lockfile follows.
-- [ ] Failing-first check in `i18n.test.ts`: no key starts with `vault.`.
-- [ ] `npm test` in `packages/core` green. Core is now a local-only library.
-- [ ] `git commit -m "refactor(core): remove the vault"`
+- [x] Failing-first check in `i18n.test.ts`: no key starts with `vault.`.
+- [x] `npm test` in `packages/core` green. Core is now a local-only library.
+- [x] `git commit -m "refactor(core): remove the vault"`
 
 ### Task 6 — main process: Google, secure store, and the net bridge
 

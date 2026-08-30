@@ -39,4 +39,9 @@ describe('t', () => {
     const syncKeys = Object.keys(en).filter((k) => k.startsWith('sync.'))
     expect(syncKeys, `leftover sync keys: ${syncKeys.join(', ')}`).toEqual([])
   })
+
+  it('has no vault keys left (half-removal check)', () => {
+    const vaultKeys = Object.keys(en).filter((k) => k.startsWith('vault.'))
+    expect(vaultKeys, `leftover vault keys: ${vaultKeys.join(', ')}`).toEqual([])
+  })
 })
