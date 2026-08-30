@@ -6,13 +6,13 @@ pub enum SshError {
     Connect { msg: String },
     #[error("authentication failed: {msg}")]
     Auth { msg: String },
-    #[error("unknown host key for {host}")]
+    #[error("unknown host key for {host} fingerprint={fingerprint} algo={algo}")]
     HostKeyUnknown {
         host: String,
         fingerprint: String,
         algo: String,
     },
-    #[error("host key mismatch for {host}")]
+    #[error("host key mismatch for {host} expected={expected} got={got}")]
     HostKeyMismatch {
         host: String,
         expected: String,

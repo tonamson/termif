@@ -53,7 +53,22 @@ export function parseFfiError(e: unknown): CoreError {
   // Try direct prefix first, then search for any embedded code pattern
   let match = CODE_PREFIX.exec(candidate)
   if (match?.[1] !== undefined && match[2] !== undefined) {
-    return new CoreError(match[1], match[2])
+    const code = match[1]
+    const msg = match[2]
+    const details: Record<string, string> = {}
+    // Extract structured details that Rust now embeds in the message
+    // e.g. "unknown host key for 1.2.3.4 fingerprint=SHA256:abc algo=ssh-ed25519"
+    const fp = msg.match(/fingerprint=([^\s]+)/)
+    if (fp?.[1]) details.fingerprint = fp[1]
+    const algo = msg.match(/algo=([^\s]+)/)
+    if (algo?.[1]) details.algo = algo[1]
+    const host = msg.match(/for\s+([^\s]+)(?:\s|$)/)
+    if (host?.[1]) details.host = host[1]
+    const expected = msg.match(/expected=([^\s]+)/)
+    if (expected?.[1]) details.expected = expected[1]
+    const got = msg.match(/got=([^\s]+)/)
+    if (got?.[1]) details.got = got[1]
+    return new CoreError(code, msg, details)
   }
   // Fallback: find last occurrence of "code: message" inside wrapped text
   const all = [...text.matchAll(/([a-z][a-z0-9_]*):\s([^\n]+)/g)]
@@ -78,7 +93,14 @@ export function parseFfiError(e: unknown): CoreError {
     ])
     if (known.has(code)) {
       const msg = text.slice((last.index ?? 0) + code.length + 2).trim()
-      return new CoreError(code, msg)
+      const details: Record<string, string> = {}
+      const fp = msg.match(/fingerprint=([^\s]+)/)
+      if (fp?.[1]) details.fingerprint = fp[1]
+      const algo = msg.match(/algo=([^\s]+)/)
+      if (algo?.[1]) details.algo = algo[1]
+      const host = msg.match(/for\s+([^\s]+)(?:\s|$)/)
+      if (host?.[1]) details.host = host[1]
+      return new CoreError(code, msg, details)
     }
   }
   return new CoreError('unknown', text)
