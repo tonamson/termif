@@ -31,6 +31,7 @@ not "not written yet" — it is out of v1 scope.
 | 5 | [`plans/2026-08-30-termif-04-desktop-visual.md`](plans/2026-08-30-termif-04-desktop-visual.md) — desktop visual design | 7 | **complete (2026-08-30)** | — |
 | 6 | [`plans/2026-08-30-termif-06-local-only.md`](plans/2026-08-30-termif-06-local-only.md) — everything in one SQLite file, no vault, no Google | 12 | not started | 7 |
 | 7 | [`plans/2026-08-30-termif-07-live-acceptance.md`](plans/2026-08-30-termif-07-live-acceptance.md) — live acceptance: real server, packaged `.dmg` | 3 layers | not started, blocked by 6 | — |
+| 8 | [`plans/2026-08-30-termif-08-desktop-layout.md`](plans/2026-08-30-termif-08-desktop-layout.md) — layout: drawer, inspector, SFTP menus, layout tests | 15 | not started, blocked by 6 | — |
 
 Plans 6 and 7 were added on 2026-08-30 and run last. Plan 6 removes the
 encryption and sync layers; Plan 7 then verifies what remains against a real

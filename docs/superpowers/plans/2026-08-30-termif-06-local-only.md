@@ -281,23 +281,23 @@ Before the vault, because `sheet/rows.ts` and `sheet/client.ts` both reference
 
 Spec §6. The database is the source of truth; the file is a derived cache.
 
-- [ ] Failing test: rendering N rows produces N lines of OpenSSH-format
+- [x] Failing test: rendering N rows produces N lines of OpenSSH-format
       `known_hosts`, and an empty table produces an empty file rather than
       throwing.
-- [ ] Failing test: a non-22 port is rendered in the bracketed
+- [x] Failing test: a non-22 port is rendered in the bracketed
       `[host]:port` form. Getting this wrong makes every non-default-port host
       re-prompt, and it looks like the copy failed rather than like a formatting
       bug.
-- [ ] Failing test in `handlers.test.ts`: `ssh:trustHostKey` calls the native
+- [x] Failing test in `handlers.test.ts`: `ssh:trustHostKey` calls the native
       side **and** inserts the row. Assert both; asserting only the insert
       passes while the live connection stays untrusted.
-- [ ] Failing test: boot renders the file before `initNative` is called. Assert
+- [x] Failing test: boot renders the file before `initNative` is called. Assert
       the call order explicitly — this is the plan's most likely silent failure.
-- [ ] Implement: render-on-boot in `main/index.ts`, insert-on-trust in
+- [x] Implement: render-on-boot in `main/index.ts`, insert-on-trust in
       `main/handlers.ts`.
-- [ ] Migration: on finding a `known_hosts` file with an empty table, import its
+- [x] Migration: on finding a `known_hosts` file with an empty table, import its
       lines once, then leave the file alone.
-- [ ] `git commit -m "feat: keep trusted host keys in the database"`
+- [x] `git commit -m "feat: keep trusted host keys in the database"`
 
 ### Task 11 — portability, end to end
 
