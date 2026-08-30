@@ -59,7 +59,7 @@ export async function inspectPrivateKey(text: string): Promise<KeyReport> {
 
     const cipherName = new TextDecoder().decode(cipher.value)
     const algo = new TextDecoder().decode(readField(publicKey.value, 0).value)
-    const digest = await crypto.subtle.digest('SHA-256', publicKey.value)
+    const digest = await crypto.subtle.digest('SHA-256', publicKey.value as unknown as BufferSource)
     const fingerprint = `SHA256:${btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/=+$/, '')}`
 
     return {

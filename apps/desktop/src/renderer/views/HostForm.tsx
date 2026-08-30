@@ -60,7 +60,15 @@ export function HostForm({ host, onSave, onCancel }: HostFormProps) {
             passphrase: authType === 'key' && passphrase.length > 0 ? passphrase : null,
           }
 
-    await onSave(input, secretInput)
+    try {
+      await onSave(input, secretInput)
+    } catch (e) {
+      // Store errors (e.g. missing passphrase column) were previously swallowed
+      // and the user saw nothing after clicking Save.
+      const message = e instanceof Error ? e.message : String(e)
+      setError(message)
+      return
+    }
   }
 
   return (

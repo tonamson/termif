@@ -39,7 +39,7 @@ describe('hostStore', () => {
 
   it('writes secret verbatim with no encrypt step', async () => {
     const { hostStore, store } = await setup()
-    await hostStore.save(input, { kind: 'password', label: 'web-1 password', secret: 'hunter2' })
+    await hostStore.save(input, { kind: 'password', label: 'web-1 password', secret: 'hunter2', passphrase: null })
 
     const host = hostStore.get().hosts[0]!
     expect(host.authRef).not.toBeNull()
@@ -54,7 +54,7 @@ describe('hostStore', () => {
   it('round-trips a key credential verbatim', async () => {
     const { hostStore, store } = await setup()
     const pem = '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----'
-    await hostStore.save(input, { kind: 'key', label: 'deploy key', secret: pem })
+    await hostStore.save(input, { kind: 'key', label: 'deploy key', secret: pem, passphrase: null })
 
     const host = hostStore.get().hosts[0]!
     const credential = await store.getCredential(host.authRef!)
@@ -71,7 +71,7 @@ describe('hostStore', () => {
     // @ts-expect-error — vault should not be an accepted key
     expect(() => createHostStore({ store, vault: () => null })).not.toThrow
     // The real assertion is that saving works without a vault at all:
-    await s.save(input, { kind: 'password', label: 'x', secret: 'y' })
+    await s.save(input, { kind: 'password', label: 'x', secret: 'y', passphrase: null })
     expect(s.get().hosts[0]?.authRef).not.toBeNull()
   })
 
@@ -125,7 +125,7 @@ describe('hostStore', () => {
 
   it('saves a credential without needing a vault', async () => {
     const { hostStore } = await setup()
-    await hostStore.save(input, { kind: 'password', label: 'x', secret: 'y' })
+    await hostStore.save(input, { kind: 'password', label: 'x', secret: 'y', passphrase: null })
     expect(hostStore.get().hosts[0]?.authRef).not.toBeNull()
     expect(hostStore.get().credentials[0]?.secret).toBe('y')
   })

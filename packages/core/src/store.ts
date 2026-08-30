@@ -129,6 +129,8 @@ export class Store {
         ['schemaVersion', String(SCHEMA_VERSION)],
       )
     }
+    // Ensure column exists even if version already 3 but column missing (e.g. buggy earlier build)
+    await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
     return new Store(platform.db, platform.now)
   }
 

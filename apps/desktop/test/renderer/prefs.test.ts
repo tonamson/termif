@@ -48,7 +48,7 @@ describe('prefsStore', () => {
     await prefs.load()
     expect(prefs.get().sidebarWidth).toBe(300)
     expect(prefs.get().showHidden).toBe(DEFAULT_PREFS.showHidden)
-    expect((prefs.get() as Record<string, unknown>).bogus).toBeUndefined()
+    expect((prefs.get() as unknown as Record<string, unknown>).bogus).toBeUndefined()
   })
 
   it('clamps a sidebar width outside the allowed range', async () => {

@@ -17,7 +17,7 @@ import { t } from '@termif/core'
 export function MainLayout({ app }: { app: App }) {
   const [hostStore] = useState(() => createHostStore({ store: app.store }))
   const hosts = useStore(hostStore)
-  const prefs = useStore(app.prefs)
+  const prefs = useStore(app.prefs as unknown as import('../state/useStore.js').Observable<import('../state/prefs.js').UiPrefs>)
 
   const [editing, setEditing] = useState<{ id: string | null } | null>(null)
 
@@ -124,7 +124,9 @@ export function MainLayout({ app }: { app: App }) {
               host={selectedHost}
               credential={null}
               groups={allGroups}
-              onSave={(input, secret) => hostStore.save(input, secret)}
+              onSave={async (input, secret) => {
+                await hostStore.save(input, secret)
+              }}
               onPickKeyFile={async () => {
                 const p = await (window as any).termif?.app?.pickFile?.()
                 return p ?? null

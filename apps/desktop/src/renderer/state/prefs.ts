@@ -24,10 +24,12 @@ export const DEFAULT_PREFS: UiPrefs = {
 export const SIDEBAR_MIN = 200
 export const SIDEBAR_MAX = 400
 
-export interface PrefsStore extends Observable<UiPrefs> {
+export interface PrefsStore extends Omit<Observable<UiPrefs>, 'set'> {
   load(): Promise<void>
   set<K extends keyof UiPrefs>(key: K, value: UiPrefs[K]): void
   flush(): Promise<void>
+  get(): UiPrefs
+  subscribe(listener: () => void): () => void
 }
 
 const clamp = (value: number, lo: number, hi: number): number =>
