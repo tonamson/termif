@@ -72,10 +72,12 @@ export type KdfParams = VaultMeta['kdfParams']
 const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'
 
 /**
- * 22 characters of base64url from 128 random bits. Ids are generated on four
- * devices with no coordinator, so collision resistance matters more than
- * brevity; `crypto.getRandomValues` is a Web Crypto global, present in every
- * JS runtime this will ever run in.
+ * 16 characters of base64url from 128 random bits: each of the 16 bytes is
+ * mapped onto one of the 64-symbol alphabet (`byte % 64`), so every character
+ * carries 6 bits and the id holds 96 bits of effective entropy. Ids are
+ * generated on four devices with no coordinator, so collision resistance
+ * matters more than brevity; `crypto.getRandomValues` is a Web Crypto global,
+ * present in every JS runtime this will ever run in.
  */
 export function newId(): string {
   const bytes = new Uint8Array(16)

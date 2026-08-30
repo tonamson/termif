@@ -16,9 +16,11 @@ export interface MergeResult<T> {
  * saves here.
  *
  * `updatedAt` is ISO-8601 UTC with fixed width, so string comparison is also
- * chronological comparison. When two sides carry the same timestamp, the
- * larger `id` wins: an arbitrary but *identical* choice on every device, which
- * is what makes the devices converge instead of ping-ponging.
+ * chronological comparison. When two sides carry the same timestamp, we
+ * compare row content (not the `id`): the id is the merge key and is identical
+ * on both sides, so it cannot differentiate — a content comparison makes the
+ * same, deterministic choice on every device, which is what makes them
+ * converge instead of ping-ponging.
  */
 export function mergeRows<T extends Syncable>(
   local: readonly T[],

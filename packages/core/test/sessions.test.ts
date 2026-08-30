@@ -292,6 +292,29 @@ describe('SessionManager', () => {
     expect(ssh.openedShells).toHaveLength(2)
   })
 
+  it('exposes the live bridge handle for a session and tracks it across reconnect', async () => {
+    const ssh = new FakeSsh()
+    const manager = makeManager(ssh, { delaysMs: [1, 1, 1] })
+    await manager.start()
+
+    const sessionId = await manager.connect(host, { password: 'pw' })
+    await manager.openTab(sessionId, 80, 24)
+    // The first live handle IS the stable id the caller was handed.
+    expect(manager.liveHandleFor(sessionId)).toBe(sessionId)
+
+    // An unknown session id has no live handle.
+    expect(manager.liveHandleFor(999n)).toBeUndefined()
+
+    // Reconnect replaces the live handle; the stable id stays valid.
+    ssh.pushEvent({ kind: 'sessionClosed', sessionId, reason: 'network changed' })
+    await eventually(() => ssh.openedShells.length === 2, 4000)
+
+    const newHandle = ssh.openedShells[1]!.sessionId
+    expect(newHandle).not.toBe(sessionId)
+    // The caller-facing id resolves to the CURRENT (post-reconnect) handle.
+    expect(manager.liveHandleFor(sessionId)).toBe(newHandle)
+  })
+
   it('runs exactly one drain loop no matter how many tabs exist', async () => {
     const ssh = new FakeSsh()
     const manager = makeManager(ssh)

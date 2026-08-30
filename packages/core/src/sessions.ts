@@ -211,6 +211,16 @@ export class SessionManager {
     return [...this.#tabs.values()].filter((t) => t.sessionId === sessionId).map((t) => t.id)
   }
 
+  /**
+   * The CURRENT live bridge handle for a caller-facing (stable) session id, or
+   * undefined if that session is not open. The stable id survives reconnect and
+   * is NOT the bridge handle; to reach the `SshBridge` (forwards/transfers, and
+   * `ForwardManager.rebuildForSession`), resolve the live handle through this.
+   */
+  liveHandleFor(sessionId: bigint): bigint | undefined {
+    return this.#sessions.get(sessionId)?.handleId ?? undefined
+  }
+
   // ---- internals ----
 
   async #openConnection(host: Host, credential: ConnectCredential): Promise<bigint> {
@@ -315,6 +325,11 @@ export class SessionManager {
     for (const delay of this.#reconnectDelays) {
       if (!this.#draining) return
       await sleep(delay)
+
+      // A caller may disconnect mid-reconnect (race): if so, abort before
+      // re-establishing a handle. The deliberate disconnect already tore down
+      // the live handle and removed the session; bail cleanly.
+      if (session.closingDeliberately) return
 
       try {
         const handleId = await this.#openConnection(session.host, session.credential)
