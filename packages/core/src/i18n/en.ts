@@ -66,6 +66,43 @@ export const en = {
   'forward.iosForegroundOnly':
     'On iOS this forward only runs while Termif is open. iOS does not allow a background app to keep a listening socket.',
   'forward.androidBackground': 'Keeping this forward alive in the background.',
+
+  'host.search': 'Search hosts',
+  'host.add': 'Add host',
+  'host.connect': 'Connect',
+  'host.edit': 'Edit {label}',
+  'host.delete': 'Delete {label}',
+  'host.confirmDelete': 'Confirm delete',
+  'host.keep': 'Keep',
+  'host.empty': 'No hosts yet. Add one to get started.',
+  'host.noMatch': 'No hosts match that search.',
+
+  'form.add': 'Add host',
+  'form.edit': 'Edit {label}',
+  'form.label': 'Label',
+  'form.hostname': 'Hostname',
+  'form.port': 'Port',
+  'form.username': 'Username',
+  'form.tags': 'Tags',
+  'form.authentication': 'Authentication',
+  'form.password': 'Password',
+  'form.privateKey': 'Private key',
+  'form.keyPassphrase': 'Key passphrase (optional)',
+  'form.save': 'Save',
+  'form.cancel': 'Cancel',
+  'form.tagsPlaceholder': 'prod, eu-west',
+  'form.passwordPlaceholder': 'Leave blank to keep the stored password',
+  'form.keyPlaceholder': '-----BEGIN OPENSSH PRIVATE KEY-----',
+  'form.error.label': 'Give the host a label.',
+  'form.error.hostname': 'Enter a hostname.',
+  'form.error.username': 'Enter a username.',
+  'form.error.port': 'Port must be between 1 and 65535.',
+
+  'sync.now': 'Sync now',
+
+  'layout.tab.terminals': 'terminals',
+  'layout.tab.files': 'files',
+  'layout.tab.forwards': 'forwards',
 } as const
 
 export type MessageKey = keyof typeof en
