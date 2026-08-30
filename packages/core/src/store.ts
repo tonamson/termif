@@ -1,6 +1,7 @@
 import {
   hostSchema,
   newId,
+  SCHEMA_VERSION,
   snippetSchema,
   storedCredentialSchema,
   type Host,
@@ -9,6 +10,8 @@ import {
 } from './model.js'
 import type { LocalDb, Platform, SqlValue } from './platform.js'
 
+const STALE_META_KEYS = ['kdfSalt', 'kdfParams', 'vaultCheck', 'spreadsheetId']
+
 export type RowKind = 'hosts' | 'credentials' | 'snippets'
 type ChangeListener = (kind: RowKind) => void
 
@@ -16,10 +19,20 @@ type StorePlatform = Pick<Platform, 'db' | 'now'>
 
 /** Fields the caller supplies; the store owns id, updatedAt, and deleted. */
 export type HostInput = Omit<Host, 'id' | 'updatedAt' | 'deleted'> & { id?: string }
-export type CredentialInput = Omit<StoredCredential, 'id' | 'updatedAt' | 'deleted'> & {
+export type CredentialInput = Omit<StoredCredential, 'id' | 'updatedAt' | 'deleted' | 'passphrase'> & {
   id?: string
+  passphrase?: string | null
 }
 export type SnippetInput = Omit<Snippet, 'id' | 'updatedAt' | 'deleted'> & { id?: string }
+
+export type KnownHost = {
+  host: string
+  port: number
+  algo: string
+  key: string
+  addedAt: string
+}
+export type KnownHostInput = Omit<KnownHost, 'addedAt'> & { addedAt?: string }
 
 const MIGRATIONS = [
   `CREATE TABLE IF NOT EXISTS hosts (
@@ -35,13 +48,13 @@ const MIGRATIONS = [
      deleted INTEGER NOT NULL DEFAULT 0
    )`,
   `CREATE TABLE IF NOT EXISTS credentials (
-     id TEXT PRIMARY KEY,
-     label TEXT NOT NULL,
-     kind TEXT NOT NULL,
-     cipher TEXT NOT NULL,
-     updated_at TEXT NOT NULL,
-     deleted INTEGER NOT NULL DEFAULT 0
-   )`,
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      secret TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted INTEGER NOT NULL DEFAULT 0
+    )`,
   `CREATE TABLE IF NOT EXISTS snippets (
      id TEXT PRIMARY KEY,
      label TEXT NOT NULL,
@@ -50,10 +63,18 @@ const MIGRATIONS = [
      updated_at TEXT NOT NULL,
      deleted INTEGER NOT NULL DEFAULT 0
    )`,
-  `CREATE TABLE IF NOT EXISTS meta (
-     key TEXT PRIMARY KEY,
-     value TEXT NOT NULL
-   )`,
+   `CREATE TABLE IF NOT EXISTS known_hosts (
+      host TEXT NOT NULL,
+      port INTEGER NOT NULL,
+      algo TEXT NOT NULL,
+      key TEXT NOT NULL,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY (host, port, algo)
+    )`,
+   `CREATE TABLE IF NOT EXISTS meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )`,
   `CREATE INDEX IF NOT EXISTS hosts_updated_at ON hosts (updated_at)`,
   `CREATE INDEX IF NOT EXISTS credentials_updated_at ON credentials (updated_at)`,
   `CREATE INDEX IF NOT EXISTS snippets_updated_at ON snippets (updated_at)`,
@@ -77,7 +98,50 @@ export class Store {
     for (const sql of MIGRATIONS) {
       await platform.db.exec(sql)
     }
+    const current = await platform.db.query<{ value: string }>(
+      'SELECT value FROM meta WHERE key = ?',
+      ['schemaVersion'],
+    )
+    const version = current[0]?.value ?? null
+    if (version === null) {
+      await platform.db.exec(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['schemaVersion', String(SCHEMA_VERSION)],
+      )
+      // New DB at version 3 needs passphrase column even though MIGRATIONS creates old shape
+      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
+    } else if (version === '1') {
+      await platform.db.exec('DROP TABLE IF EXISTS credentials')
+      await platform.db.exec(MIGRATIONS[1]!)
+      await platform.db.exec(MIGRATIONS[6]!)
+      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
+      for (const k of STALE_META_KEYS) {
+        await platform.db.exec('DELETE FROM meta WHERE key = ?', [k])
+      }
+      await platform.db.exec(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['schemaVersion', String(SCHEMA_VERSION)],
+      )
+    } else if (version === '2') {
+      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
+      await platform.db.exec(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['schemaVersion', String(SCHEMA_VERSION)],
+      )
+    }
     return new Store(platform.db, platform.now)
+  }
+
+  async migrate(): Promise<void> {
+    const current = await this.#db.query<{ value: string }>('SELECT value FROM meta WHERE key = ?', ['schemaVersion'])
+    const version = current[0]?.value ?? null
+    if (version === '2') {
+      await this.#db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
+      await this.#db.exec(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['schemaVersion', String(SCHEMA_VERSION)],
+      )
+    }
   }
 
   onChange(listener: ChangeListener): () => void {
@@ -173,6 +237,7 @@ export class Store {
 
   async upsertCredential(input: CredentialInput): Promise<StoredCredential> {
     const credential = storedCredentialSchema.parse({
+      passphrase: null,
       ...input,
       id: input.id ?? newId(),
       updatedAt: this.#now(),
@@ -193,12 +258,12 @@ export class Store {
 
   async #writeCredential(c: StoredCredential): Promise<void> {
     await this.#db.exec(
-      `INSERT INTO credentials (id, label, kind, cipher, updated_at, deleted)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         label = excluded.label, kind = excluded.kind, cipher = excluded.cipher,
-         updated_at = excluded.updated_at, deleted = excluded.deleted`,
-      [c.id, c.label, c.kind, c.cipher, c.updatedAt, c.deleted ? 1 : 0],
+      `INSERT INTO credentials (id, label, kind, secret, passphrase, updated_at, deleted)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          label = excluded.label, kind = excluded.kind, secret = excluded.secret,
+          passphrase = excluded.passphrase, updated_at = excluded.updated_at, deleted = excluded.deleted`,
+      [c.id, c.label, c.kind, c.secret, c.passphrase, c.updatedAt, c.deleted ? 1 : 0],
     )
   }
 
@@ -308,6 +373,32 @@ export class Store {
     return removed
   }
 
+  // ---- known_hosts ----
+
+  async saveKnownHost(input: KnownHostInput): Promise<KnownHost> {
+    const addedAt = input.addedAt ?? this.#now()
+    const host: KnownHost = {
+      host: input.host,
+      port: input.port,
+      algo: input.algo,
+      key: input.key,
+      addedAt,
+    }
+    await this.#db.exec(
+      `INSERT INTO known_hosts (host, port, algo, key, added_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(host, port, algo) DO UPDATE SET key = excluded.key, added_at = excluded.added_at`,
+      [host.host, host.port, host.algo, host.key, host.addedAt],
+    )
+    return host
+  }
+
+  async listKnownHosts(): Promise<KnownHost[]> {
+    const rows = await this.#db.query<KnownHostRow>(
+      'SELECT host, port, algo, key, added_at FROM known_hosts ORDER BY host, port, algo',
+    )
+    return rows.map(toKnownHost)
+  }
+
   async getMetaValue(key: string): Promise<string | null> {
     const rows = await this.#db.query<{ value: string }>(
       'SELECT value FROM meta WHERE key = ?',
@@ -344,7 +435,8 @@ interface CredentialRow {
   id: string
   label: string
   kind: string
-  cipher: string
+  secret: string
+  passphrase: string | null
   updated_at: string
   deleted: number
 }
@@ -356,6 +448,14 @@ interface SnippetRow {
   tags: string
   updated_at: string
   deleted: number
+}
+
+interface KnownHostRow {
+  host: string
+  port: number
+  algo: string
+  key: string
+  added_at: string
 }
 
 function parseTags(raw: string): string[] {
@@ -387,7 +487,8 @@ function toCredential(row: CredentialRow): StoredCredential {
     id: row.id,
     label: row.label,
     kind: row.kind,
-    cipher: row.cipher,
+    secret: row.secret,
+    passphrase: row.passphrase ?? null,
     updatedAt: row.updated_at,
     deleted: row.deleted === 1,
   })
@@ -401,5 +502,15 @@ function toSnippet(row: SnippetRow): Snippet {
     tags: parseTags(row.tags),
     updatedAt: row.updated_at,
     deleted: row.deleted === 1,
+  }
+}
+
+function toKnownHost(row: KnownHostRow): KnownHost {
+  return {
+    host: row.host,
+    port: row.port,
+    algo: row.algo,
+    key: row.key,
+    addedAt: row.added_at,
   }
 }

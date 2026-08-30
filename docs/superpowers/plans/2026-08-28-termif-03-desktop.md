@@ -1,6 +1,6 @@
 # Termif Plan 3 — Desktop Shell (Electron)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Scope note (2026-08-28):** this plan is the whole of v1's UI. The mobile shells are deferred (spec §11), so there is no sibling plan to keep in step with — where the plan below notes that a seam exists for a second shell, that is a note about why a boundary is drawn, not work owed here.
 
@@ -71,7 +71,7 @@ Layer boundary rationale: `shared/ipc.ts` is the only module both main and prelo
 - Produces `CHANNELS`, a frozen record of every channel name, and request/response types per channel.
 - Produces a `window.termif` shape declared once in `shared/ipc.ts` as `TermifApi`, which the preload implements and the renderer consumes.
 
-- [ ] **Step 1: Write the manifests**
+- [x] **Step 1: Write the manifests**
 
 `apps/desktop/package.json`:
 
@@ -183,7 +183,7 @@ export default defineConfig({
 }
 ```
 
-- [ ] **Step 2: Write the failing IPC contract test**
+- [x] **Step 2: Write the failing IPC contract test**
 
 `apps/desktop/test/ipc.test.ts`:
 
@@ -214,12 +214,12 @@ describe('CHANNELS', () => {
 })
 ```
 
-- [ ] **Step 3: Run to see it fail**
+- [x] **Step 3: Run to see it fail**
 
 Run: `cd apps/desktop && npm install && npx vitest run test/ipc.test.ts`
 Expected: FAIL — `src/shared/ipc.ts` does not exist.
 
-- [ ] **Step 4: Write the contract**
+- [x] **Step 4: Write the contract**
 
 `apps/desktop/src/shared/ipc.ts`:
 
@@ -401,12 +401,12 @@ export type SerialisedSshEvent =
 export type { SshEvent }
 ```
 
-- [ ] **Step 5: Run the contract test**
+- [x] **Step 5: Run the contract test**
 
 Run: `cd apps/desktop && npx vitest run test/ipc.test.ts`
 Expected: PASS, 4 tests.
 
-- [ ] **Step 6: Write a minimal main, preload, and renderer so the app launches**
+- [x] **Step 6: Write a minimal main, preload, and renderer so the app launches**
 
 `apps/desktop/src/main/index.ts`:
 
@@ -568,12 +568,12 @@ if (root === null) throw new Error('missing #root')
 createRoot(root).render(<div>Termif</div>)
 ```
 
-- [ ] **Step 7: Verify the app launches**
+- [x] **Step 7: Verify the app launches**
 
 Run: `cd apps/desktop && npm run dev`
 Expected: a window titled Termif showing the placeholder. Close it. Then `npm run typecheck` with no errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add apps/desktop
@@ -598,7 +598,7 @@ git commit -m "feat(desktop): scaffold Electron app with a single IPC contract"
   - `DesktopDb` with `exec`, `query`, `transaction(statements)`
 - `db.ts` uses `better-sqlite3` with `journal_mode = WAL` and `foreign_keys = ON`.
 
-- [ ] **Step 1: Write the failing db test**
+- [x] **Step 1: Write the failing db test**
 
 `apps/desktop/test/main/db.test.ts`:
 
@@ -693,12 +693,12 @@ describe('openDatabase', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd apps/desktop && npx vitest run test/main/db.test.ts`
 Expected: FAIL — no `src/main/db.ts`.
 
-- [ ] **Step 3: Write the database module**
+- [x] **Step 3: Write the database module**
 
 `apps/desktop/src/main/db.ts`:
 
@@ -758,12 +758,12 @@ export function openDatabase(filePath: string): DesktopDb {
 }
 ```
 
-- [ ] **Step 4: Run the db test**
+- [x] **Step 4: Run the db test**
 
 Run: `cd apps/desktop && npx vitest run test/main/db.test.ts`
 Expected: PASS, 6 tests. If `better-sqlite3` fails to load, run `npx electron-rebuild -f -w better-sqlite3` first — the module must be built against Electron's ABI.
 
-- [ ] **Step 5: Write the failing native-bridge test**
+- [x] **Step 5: Write the failing native-bridge test**
 
 `apps/desktop/test/main/native.test.ts`:
 
@@ -847,12 +847,12 @@ describe('serialiseEvents', () => {
 })
 ```
 
-- [ ] **Step 6: Run to see it fail**
+- [x] **Step 6: Run to see it fail**
 
 Run: `cd apps/desktop && npx vitest run test/main/native.test.ts`
 Expected: FAIL — no `src/main/native.ts`.
 
-- [ ] **Step 7: Write the native bridge**
+- [x] **Step 7: Write the native bridge**
 
 `apps/desktop/src/main/native.ts`:
 
@@ -1025,12 +1025,12 @@ export function serialiseDirEntry(entry: RawDirEntry): {
 }
 ```
 
-- [ ] **Step 8: Run the native test**
+- [x] **Step 8: Run the native test**
 
 Run: `cd apps/desktop && npx vitest run test/main/native.test.ts`
 Expected: PASS, 8 tests. The tests exercise `serialiseEvents` only, so they do not load the `.node` module.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/desktop
@@ -1054,7 +1054,7 @@ git commit -m "feat(desktop): add main-process native bridge and SQLite database
 
 `drive.file` rather than full `drive`: it lets the app create and use its own spreadsheet while being unable to read anything else in the user's Drive (spec §4).
 
-- [ ] **Step 1: Write the failing auth test**
+- [x] **Step 1: Write the failing auth test**
 
 `apps/desktop/test/main/googleAuth.test.ts`:
 
@@ -1313,12 +1313,12 @@ describe('GoogleAuth', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd apps/desktop && npx vitest run test/main/googleAuth.test.ts`
 Expected: FAIL — no `src/main/googleAuth.ts`.
 
-- [ ] **Step 3: Write the secure store, HTTP client, and auth**
+- [x] **Step 3: Write the secure store, HTTP client, and auth**
 
 `apps/desktop/src/main/secureStore.ts`:
 
@@ -1606,12 +1606,12 @@ function parse<T>(response: HttpResponsePayload): T {
 }
 ```
 
-- [ ] **Step 4: Run the auth test**
+- [x] **Step 4: Run the auth test**
 
 Run: `cd apps/desktop && npx vitest run test/main/googleAuth.test.ts`
 Expected: PASS, 13 tests.
 
-- [ ] **Step 5: Write the failing handler-coverage test**
+- [x] **Step 5: Write the failing handler-coverage test**
 
 `apps/desktop/test/main/handlers.test.ts`:
 
@@ -1639,12 +1639,12 @@ describe('registerHandlers', () => {
 })
 ```
 
-- [ ] **Step 6: Run to see it fail**
+- [x] **Step 6: Run to see it fail**
 
 Run: `cd apps/desktop && npx vitest run test/main/handlers.test.ts`
 Expected: FAIL — no `src/main/handlers.ts`.
 
-- [ ] **Step 7: Write the handlers**
+- [x] **Step 7: Write the handlers**
 
 `apps/desktop/src/main/handlers.ts`:
 
@@ -1886,7 +1886,7 @@ export function registerHandlers(deps: HandlerDeps): void {
 }
 ```
 
-- [ ] **Step 8: Wire the handlers into app startup**
+- [x] **Step 8: Wire the handlers into app startup**
 
 Modify `apps/desktop/src/main/index.ts`: add these imports and call `registerHandlers` before `createWindow()` inside `whenReady`.
 
@@ -1929,12 +1929,12 @@ void app.whenReady().then(() => {
 })
 ```
 
-- [ ] **Step 9: Run the handler test and typecheck**
+- [x] **Step 9: Run the handler test and typecheck**
 
 Run: `cd apps/desktop && npx vitest run test/main && npm run typecheck`
 Expected: PASS, all main-process tests; no type errors.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add apps/desktop
@@ -1956,7 +1956,7 @@ git commit -m "feat(desktop): add secure store, HTTP client, Google device-flow 
 
 This module is the entire seam between the shell and core. Everything Electron-shaped stops here, which is what makes core testable against a fake and, later, drivable by a second shell (spec §11). In v1 the practical payoff is the first half: core's tests need no Electron.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `apps/desktop/test/renderer/platform.test.ts`:
 
@@ -2168,12 +2168,12 @@ describe('deserialiseEvent', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/platform.test.ts`
 Expected: FAIL — no `src/renderer/platform.ts`.
 
-- [ ] **Step 3: Write the adapter**
+- [x] **Step 3: Write the adapter**
 
 `apps/desktop/src/renderer/platform.ts`:
 
@@ -2363,12 +2363,12 @@ export function createPlatform(api: TermifApi): Platform {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/platform.test.ts`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop
@@ -2391,7 +2391,7 @@ git commit -m "feat(desktop): add renderer Platform adapter over the IPC bridge"
 - Produces `bootApp(platform)`, returning `{ store, syncEngine, sessions, transfers, forwards, vaultStore }` — assembled once and passed down through one React context.
 - The vault key never leaves the renderer (Global Constraints); the main process only ever sees the wrapped bytes.
 
-- [ ] **Step 1: Write the failing store test**
+- [x] **Step 1: Write the failing store test**
 
 `apps/desktop/test/renderer/vaultStore.test.ts`:
 
@@ -2531,7 +2531,7 @@ describe('vaultStore', () => {
 })
 ```
 
-- [ ] **Step 2: Write the fake platform for renderer tests**
+- [x] **Step 2: Write the fake platform for renderer tests**
 
 `apps/desktop/test/renderer/fakes/platform.ts`:
 
@@ -2630,12 +2630,12 @@ export async function fakePlatform(): Promise<Platform> {
 }
 ```
 
-- [ ] **Step 3: Run to see the store test fail**
+- [x] **Step 3: Run to see the store test fail**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/vaultStore.test.ts`
 Expected: FAIL — no `src/renderer/state/vaultStore.ts`.
 
-- [ ] **Step 4: Write the store primitive and the vault store**
+- [x] **Step 4: Write the store primitive and the vault store**
 
 `apps/desktop/src/renderer/state/useStore.ts`:
 
@@ -2823,12 +2823,12 @@ export function createVaultStore(deps: VaultStoreDeps): VaultStore {
 }
 ```
 
-- [ ] **Step 5: Run the store test**
+- [x] **Step 5: Run the store test**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/vaultStore.test.ts`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 6: Write the failing unlock-screen test**
+- [x] **Step 6: Write the failing unlock-screen test**
 
 `apps/desktop/test/renderer/UnlockScreen.test.tsx`:
 
@@ -2898,7 +2898,7 @@ describe('UnlockScreen', () => {
 })
 ```
 
-- [ ] **Step 7: Write the screens and AppRoot**
+- [x] **Step 7: Write the screens and AppRoot**
 
 `apps/desktop/src/renderer/views/UnlockScreen.tsx`:
 
@@ -3203,12 +3203,12 @@ const app = await bootApp(platform, api)
 createRoot(root).render(<AppRoot app={app} />)
 ```
 
-- [ ] **Step 8: Run the unlock-screen test**
+- [x] **Step 8: Run the unlock-screen test**
 
 Run: `cd apps/desktop && npx vitest run test/renderer`
 Expected: PASS, 16 tests across both renderer test files. `MainLayout` arrives in Task 6; until then, stub it as `export function MainLayout() { return <div>ready</div> }` in `apps/desktop/src/renderer/app/MainLayout.tsx` so the tree compiles.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/desktop
@@ -3230,7 +3230,7 @@ git commit -m "feat(desktop): add boot, observable stores, and the vault unlock 
 - `save` writes the credential ciphertext through the vault and then the host, in that order, so a host never points at an `authRef` that does not exist yet.
 - Produces `MainLayout` — sidebar (host list, sync badge) plus a main pane that switches between terminal tabs, the SFTP browser, and the forward panel.
 
-- [ ] **Step 1: Write the failing host-store test**
+- [x] **Step 1: Write the failing host-store test**
 
 `apps/desktop/test/renderer/hostStore.test.ts`:
 
@@ -3383,12 +3383,12 @@ describe('hostStore', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see it fail**
+- [x] **Step 2: Run to see it fail**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/hostStore.test.ts`
 Expected: FAIL — no `src/renderer/state/hostStore.ts`.
 
-- [ ] **Step 3: Write the host store**
+- [x] **Step 3: Write the host store**
 
 `apps/desktop/src/renderer/state/hostStore.ts`:
 
@@ -3519,12 +3519,12 @@ export function createHostStore(deps: HostStoreDeps): HostStore {
 
 Note on the two-step credential write: the AAD must be the credential's final id, which the store assigns. Writing a placeholder then the real ciphertext keeps that honest at the cost of one extra local write. If Plan 2's `newId()` is exported (it is), a cleaner alternative is to generate the id here and pass it in once — prefer that at implementation time and drop the placeholder.
 
-- [ ] **Step 4: Run the store test**
+- [x] **Step 4: Run the store test**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/hostStore.test.ts`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 5: Write the failing component tests**
+- [x] **Step 5: Write the failing component tests**
 
 `apps/desktop/test/renderer/HostList.test.tsx`:
 
@@ -3836,7 +3836,7 @@ describe('HostForm', () => {
 })
 ```
 
-- [ ] **Step 6: Write the components**
+- [x] **Step 6: Write the components**
 
 `apps/desktop/src/renderer/views/HostList.tsx`:
 
@@ -4252,12 +4252,12 @@ export function MainLayout({ app }: { app: App }) {
 
 `TerminalTabs`, `SftpBrowser`, `ForwardPanel`, and `useConnectFlow` arrive in Tasks 7–10. Stub each as a one-line component returning `null` so the tree compiles after this task, and replace them in turn.
 
-- [ ] **Step 7: Run the component tests**
+- [x] **Step 7: Run the component tests**
 
 Run: `cd apps/desktop && npx vitest run test/renderer && npm run typecheck`
 Expected: PASS, all renderer tests; no type errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add apps/desktop
@@ -4279,7 +4279,7 @@ git commit -m "feat(desktop): add host store, host list, host form, and the main
   - `mismatch` — shows both fingerprints and offers **only** Cancel. There is no override control at all (spec §7).
 - The flow: read the host, decrypt its credential, call `sessions.connect`, and on `host_key_unknown` show the prompt, `trustHostKey`, then retry once. On `host_key_mismatch`, stop.
 
-- [ ] **Step 1: Write the failing prompt test**
+- [x] **Step 1: Write the failing prompt test**
 
 `apps/desktop/test/renderer/HostKeyPrompt.test.tsx`:
 
@@ -4422,7 +4422,7 @@ describe('HostKeyPrompt', () => {
 })
 ```
 
-- [ ] **Step 2: Write the prompt**
+- [x] **Step 2: Write the prompt**
 
 `apps/desktop/src/renderer/views/HostKeyPrompt.tsx`:
 
@@ -4499,12 +4499,12 @@ export function HostKeyPrompt({
 }
 ```
 
-- [ ] **Step 3: Run the prompt test**
+- [x] **Step 3: Run the prompt test**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/HostKeyPrompt.test.tsx`
 Expected: PASS, 7 tests.
 
-- [ ] **Step 4: Write the failing connect-flow test**
+- [x] **Step 4: Write the failing connect-flow test**
 
 `apps/desktop/test/renderer/connectFlow.test.tsx`:
 
@@ -4691,7 +4691,7 @@ describe('classifyConnectError', () => {
 })
 ```
 
-- [ ] **Step 5: Write the connect flow**
+- [x] **Step 5: Write the connect flow**
 
 `apps/desktop/src/renderer/state/connectFlow.tsx`:
 
@@ -4879,12 +4879,12 @@ export function useConnectFlow(app: App, hostStore: HostStore): ConnectFlow {
 }
 ```
 
-- [ ] **Step 6: Run the connect-flow test**
+- [x] **Step 6: Run the connect-flow test**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/connectFlow.test.tsx`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop
@@ -4905,7 +4905,7 @@ git commit -m "feat(desktop): add connect flow with host key trust prompt and mi
 - Produces `TerminalPane` — mounts one `xterm.js`, subscribes to its tab's bytes, writes user input back, and resizes on container change.
 - Byte batching: `channelData` is written straight to `xterm.js`. No ANSI parsing in the renderer's own code (spec §6).
 
-- [ ] **Step 1: Write the failing tab-store test**
+- [x] **Step 1: Write the failing tab-store test**
 
 `apps/desktop/test/renderer/tabStore.test.ts`:
 
@@ -5010,7 +5010,7 @@ describe('tabStore', () => {
 })
 ```
 
-- [ ] **Step 2: Write the tab store**
+- [x] **Step 2: Write the tab store**
 
 `apps/desktop/src/renderer/state/tabStore.ts`:
 
@@ -5100,12 +5100,12 @@ export function createTabStore(): TabStore {
 }
 ```
 
-- [ ] **Step 3: Run the tab-store test**
+- [x] **Step 3: Run the tab-store test**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/tabStore.test.ts`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 4: Write the failing terminal-pane test**
+- [x] **Step 4: Write the failing terminal-pane test**
 
 `apps/desktop/test/renderer/TerminalPane.test.tsx`:
 
@@ -5251,7 +5251,7 @@ describe('TerminalPane', () => {
 })
 ```
 
-- [ ] **Step 5: Write the terminal pane and tabs**
+- [x] **Step 5: Write the terminal pane and tabs**
 
 `apps/desktop/src/renderer/views/TerminalPane.tsx`:
 
@@ -5480,12 +5480,12 @@ export function TerminalTabs({ app }: { app: App }) {
 }
 ```
 
-- [ ] **Step 6: Run the terminal tests**
+- [x] **Step 6: Run the terminal tests**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/TerminalPane.test.tsx test/renderer/tabStore.test.ts`
 Expected: PASS, 17 tests. `SnippetPalette` arrives in Task 9; stub it returning `null` until then.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/desktop
@@ -5505,7 +5505,7 @@ git commit -m "feat(desktop): add terminal tabs with xterm.js panes and reconnec
 - Produces `SnippetPalette` — a filtered list with keyboard navigation, Enter to send, and an inline editor for adding one.
 - Sending appends a newline unless the body already ends with one, so a one-line command actually runs.
 
-- [ ] **Step 1: Write the failing store test**
+- [x] **Step 1: Write the failing store test**
 
 `apps/desktop/test/renderer/snippetStore.test.ts`:
 
@@ -5594,7 +5594,7 @@ describe('withTrailingNewline', () => {
 })
 ```
 
-- [ ] **Step 2: Write the store**
+- [x] **Step 2: Write the store**
 
 `apps/desktop/src/renderer/state/snippetStore.ts`:
 
@@ -5668,7 +5668,7 @@ export function createSnippetStore(deps: {
 }
 ```
 
-- [ ] **Step 3: Write the failing palette test**
+- [x] **Step 3: Write the failing palette test**
 
 `apps/desktop/test/renderer/SnippetPalette.test.tsx`:
 
@@ -5795,7 +5795,7 @@ describe('SnippetPaletteView', () => {
 })
 ```
 
-- [ ] **Step 4: Write the palette**
+- [x] **Step 4: Write the palette**
 
 `apps/desktop/src/renderer/views/SnippetPalette.tsx`:
 
@@ -5972,12 +5972,12 @@ export function SnippetPalette({
 }
 ```
 
-- [ ] **Step 5: Run the snippet tests**
+- [x] **Step 5: Run the snippet tests**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/snippetStore.test.ts test/renderer/SnippetPalette.test.tsx`
 Expected: PASS, 19 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/desktop
@@ -5998,7 +5998,7 @@ git commit -m "feat(desktop): add snippet store and keyboard-driven snippet pale
 - Produces `SftpBrowser` — remote pane with breadcrumb, plus upload/download buttons that use the main process's file dialogs.
 - Produces `TransferList` — reads `TransferManager.list()`, shows progress, offers cancel.
 
-- [ ] **Step 1: Write the failing store test**
+- [x] **Step 1: Write the failing store test**
 
 `apps/desktop/test/renderer/sftpStore.test.ts`:
 
@@ -6166,7 +6166,7 @@ describe('sftpStore', () => {
 })
 ```
 
-- [ ] **Step 2: Write the store**
+- [x] **Step 2: Write the store**
 
 `apps/desktop/src/renderer/state/sftpStore.ts`:
 
@@ -6269,7 +6269,7 @@ export function createSftpStore(deps: { ssh: SshBridge; sessionId: bigint }): Sf
 }
 ```
 
-- [ ] **Step 3: Write the failing browser test**
+- [x] **Step 3: Write the failing browser test**
 
 `apps/desktop/test/renderer/SftpBrowser.test.tsx`:
 
@@ -6433,7 +6433,7 @@ describe('TransferList', () => {
 })
 ```
 
-- [ ] **Step 4: Write the browser and transfer list**
+- [x] **Step 4: Write the browser and transfer list**
 
 `apps/desktop/src/renderer/views/TransferList.tsx`:
 
@@ -6699,12 +6699,12 @@ function SftpBrowserSession({
 }
 ```
 
-- [ ] **Step 5: Run the SFTP tests**
+- [x] **Step 5: Run the SFTP tests**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/sftpStore.test.ts test/renderer/SftpBrowser.test.tsx`
 Expected: PASS, 21 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/desktop
@@ -6727,7 +6727,7 @@ git commit -m "feat(desktop): add SFTP browser with transfers and progress"
 - Produces an `electron-builder` config for macOS (arm64 + x64 dmg) and Windows (x64 nsis).
 - Produces one Playwright test that launches the packaged main process, creates a vault, adds a host, and asserts it persists across a restart. One end-to-end test, not a suite: UI churns, and cheap UI tests become debt (spec §8).
 
-- [ ] **Step 1: Write the failing forward-panel test**
+- [x] **Step 1: Write the failing forward-panel test**
 
 `apps/desktop/test/renderer/ForwardPanel.test.tsx`:
 
@@ -6846,7 +6846,7 @@ describe('ForwardPanelView', () => {
 })
 ```
 
-- [ ] **Step 2: Write the forward panel**
+- [x] **Step 2: Write the forward panel**
 
 `apps/desktop/src/renderer/views/ForwardPanel.tsx`:
 
@@ -7060,12 +7060,12 @@ export function ForwardPanel({ app }: { app: App }) {
 }
 ```
 
-- [ ] **Step 3: Run the forward test**
+- [x] **Step 3: Run the forward test**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/ForwardPanel.test.tsx`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 4: Write the packaging config**
+- [x] **Step 4: Write the packaging config**
 
 `apps/desktop/electron-builder.yml`:
 
@@ -7130,7 +7130,7 @@ linux:
 </plist>
 ```
 
-- [ ] **Step 5: Write the end-to-end smoke test**
+- [x] **Step 5: Write the end-to-end smoke test**
 
 `apps/desktop/e2e/smoke.spec.ts`:
 
@@ -7212,7 +7212,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 6: Run the whole local gate**
+- [x] **Step 6: Run the whole local gate**
 
 Run:
 
@@ -7226,7 +7226,7 @@ npm run e2e
 
 Expected: typecheck clean, all unit tests pass, the build produces `out/`, and the smoke test passes. The smoke test needs the built app, so `build` must run first.
 
-- [ ] **Step 7: Write the CI workflow**
+- [x] **Step 7: Write the CI workflow**
 
 `.github/workflows/desktop.yml`:
 
@@ -7288,7 +7288,7 @@ jobs:
         run: npm run e2e
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add apps/desktop .github/workflows/desktop.yml
@@ -7310,7 +7310,7 @@ git commit -m "feat(desktop): add forward panel, packaging config, and end-to-en
 - Produces `connectSheet(setSpreadsheet, sheets)` — find existing Termif spreadsheet, create only if none (spec §4).
 - Produces `SignInScreen`. Until the user finishes, the app stays offline against the local database.
 
-- [ ] **Step 1: Write the failing flow tests**
+- [x] **Step 1: Write the failing flow tests**
 
 `apps/desktop/test/renderer/signIn.test.ts`:
 
@@ -7447,12 +7447,12 @@ describe('connectSheet', () => {
 })
 ```
 
-- [ ] **Step 2: Run to see the flow tests fail**
+- [x] **Step 2: Run to see the flow tests fail**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/signIn.test.ts`
 Expected: FAIL — no `src/renderer/state/signIn.ts`.
 
-- [ ] **Step 3: Write the flow**
+- [x] **Step 3: Write the flow**
 
 `apps/desktop/src/renderer/state/signIn.ts`:
 
@@ -7540,12 +7540,12 @@ export const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms))
 ```
 
-- [ ] **Step 4: Run the flow tests to verify they pass**
+- [x] **Step 4: Run the flow tests to verify they pass**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/signIn.test.ts`
 Expected: PASS, 7 tests.
 
-- [ ] **Step 5: Write the failing screen test**
+- [x] **Step 5: Write the failing screen test**
 
 `apps/desktop/test/renderer/SignInScreen.test.tsx`:
 
@@ -7593,12 +7593,12 @@ describe('SignInScreenView', () => {
 })
 ```
 
-- [ ] **Step 6: Run to see the screen test fail**
+- [x] **Step 6: Run to see the screen test fail**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/SignInScreen.test.tsx`
 Expected: FAIL — no `src/renderer/views/SignInScreen.tsx`.
 
-- [ ] **Step 7: Write the screen and wire it into the layout**
+- [x] **Step 7: Write the screen and wire it into the layout**
 
 `apps/desktop/src/renderer/views/SignInScreen.tsx`:
 
@@ -7754,12 +7754,12 @@ Replace the `SyncBadge` in the sidebar with:
         )}
 ```
 
-- [ ] **Step 8: Run the screen and flow tests**
+- [x] **Step 8: Run the screen and flow tests**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/signIn.test.ts test/renderer/SignInScreen.test.tsx`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/desktop

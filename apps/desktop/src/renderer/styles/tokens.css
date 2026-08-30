@@ -1,0 +1,51 @@
+/* Mirror of src/renderer/styles/palette.ts. Change both together; the test in
+   test/renderer/palette.test.ts fails if they drift. */
+:root {
+  --bg-app: #0d1117;
+  --bg-surface: #12171f;
+  --bg-raised: #1b222c;
+  --bg-overlay: #212a35;
+
+  --fg: #e6edf3;
+  --fg-muted: #a7b3c0;
+  --fg-subtle: #8b98a6;
+
+  --accent: #4c8dff;
+  --accent-fg: #0d1117;
+
+  --ok: #3fb950;
+  --warn: #d29922;
+  --danger: #f85149;
+
+  --border: #232c38;
+  --border-strong: #3a4553;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --shadow-overlay: 0 16px 48px rgb(0 0 0 / 0.5);
+
+  --motion-fast: 120ms ease;
+
+  --space-0: 2px;
+
+  --titlebar-h: 38px;
+  --sidebar-w: 260px;
+  --sidebar-rail-w: 48px;
+  --inspector-w: 240px;
+
+  --z-drawer: 1;
+  --z-inspector: 5;
+  --z-sheet: 10;
+  --z-palette: 20;
+}

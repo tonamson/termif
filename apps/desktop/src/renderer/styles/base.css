@@ -1,0 +1,231 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  margin: 0;
+  font-weight: 600;
+}
+h1 { font-size: 18px; }
+h2 { font-size: 15px; }
+h3 { font-size: 13px; }
+
+p { margin: 0; }
+
+ul, ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Focus is functionality here: this app is driven from the keyboard. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --- Primitive: button -------------------------------------------------- */
+/* Bare `button` is the ghost style. Variants come from a data attribute so no
+   view has to grow a new class name. */
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast),
+    border-color var(--motion-fast),
+    color var(--motion-fast);
+}
+button:hover:not(:disabled) {
+  background: var(--bg-raised);
+  color: var(--fg);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button[data-variant='primary'] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+button[data-variant='primary']:hover:not(:disabled) {
+  filter: brightness(1.1);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+button[data-variant='danger'] {
+  color: var(--danger);
+}
+button[data-variant='danger']:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  color: var(--danger);
+}
+
+/* --- Primitive: fields -------------------------------------------------- */
+input,
+select,
+textarea {
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  color: var(--fg);
+  font: inherit;
+}
+textarea {
+  height: auto;
+  padding: var(--space-2);
+  resize: vertical;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--fg-subtle);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--fg-muted);
+}
+
+/* --- Primitive: list row ------------------------------------------------ */
+/* Shared by the host list, the SFTP listing, the forward list, and transfers:
+   four views, one rule for what a row is. */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: default;
+  transition: background-color var(--motion-fast);
+}
+.list-row:hover {
+  background: var(--bg-raised);
+}
+
+/* --- Primitive: overlay ------------------------------------------------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: rgb(0 0 0 / 0.55);
+}
+.overlay > * {
+  width: 100%;
+  max-width: 460px;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+
+progress {
+  width: 100%;
+  height: 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  appearance: none;
+}
+progress::-webkit-progress-bar {
+  background: var(--bg-raised);
+  border-radius: var(--radius-sm);
+}
+progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+@keyframes termif-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* --- Layout invariants -------------------------------------------------- */
+/* A grid or flex child defaults to `min-width: auto`, which means it can never
+   be narrower than its content. One long hostname then widens the whole row
+   instead of being clipped. Every text-bearing cell opts out. */
+.u-clip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A scroll region inside a flex column needs an explicit zero minimum too, or
+   it grows to fit its content and the scrollbar never appears. */
+.u-scroll {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -7,3 +7,13 @@ target/
 node_modules/
 dist/
 tools/
+
+# electron-vite build output and Playwright artifacts
+out/
+test-results/
+playwright-report/
+
+# live acceptance credentials, never commit
+.env.live
+apps/desktop/e2e/.env.live
+.superpowers/
