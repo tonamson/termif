@@ -11,6 +11,13 @@ body,
   margin: 0;
 }
 
+/* A fixed-viewport desktop shell: content never scrolls the document, so no
+   content change can resize the layout viewport (main-panels spec §6). */
+html,
+body {
+  overflow: hidden;
+}
+
 body {
   background: var(--bg-app);
   color: var(--fg);

@@ -340,6 +340,7 @@ li[data-state='reconnecting'] .host-list__dot { background: var(--warn); }
   position: absolute;
   inset: 0;
   padding: var(--space-2);
+  overflow: hidden;
 }
 
 /* --- Overlays ----------------------------------------------------------- */

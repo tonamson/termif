@@ -103,7 +103,55 @@ most one visible panel. The auto-placement inversion of §1.1 becomes
 structurally impossible: there is never a second child to misplace. The
 `.drawer*` CSS rules are deleted with the component.
 
-## 6. Testing
+## 6. The resize oscillation (measured 2026-08-30)
+
+**Symptom:** "screen bị flash scroll liên tục" — the page scrollbar toggles
+and the terminal re-fits forever once a session is open.
+
+**Instrumented evidence** (Playwright + `_electron.launch`, ResizeObserver
+wrapped by an init script, connected session against the docker test sshd):
+
+| | RO callbacks | overflow |
+|---|---|---|
+| unfixed | **28.5 / s**, alternating two geometries | `scrollHeight 804 > clientHeight 790` |
+| + the two CSS lines below | **0.0 / s** | `800 = 800`, `1280 = 1280` |
+
+The two alternating states, sampled at 60 ms:
+
+| | state A | state B |
+|---|---|---|
+| body | `sw 1273 > cw 1270` — scrollbar on | `sw 1280 = cw 1280` — scrollbar off |
+| xterm | 994 × **720** | 1004 × **705** |
+
+**Chain:** xterm's fitted canvas sits exactly at the viewport edge → a few
+pixels of height change push `scrollHeight` past `clientHeight` → the
+**document** scrollbar appears (`.terminal-pane` has no `overflow: hidden`
+and `body` none either, so the pane's overflow propagates to the page) →
+the viewport narrows 10 px → `ResizeObserver` → `fit()` recomputes cols/rows
+→ `ssh:resize` → shell redraw changes height again → scrollbar disappears →
+… forever. The existing unchanged-dims guard cannot stop this: cols/rows
+*alternate* between two values, they never repeat consecutively. This is the
+loop layout spec §11.1 warned about; its prescribed fix ("bail when
+dimensions are unchanged") was implemented and is provably insufficient
+against alternation.
+
+**Fix — the driver, not a smarter guard:**
+
+1. `html, body { overflow: hidden }` in `base.css` — the app is a
+   fixed-viewport desktop shell with internal scroll regions; the document
+   never scrolls, so content can never resize the layout viewport.
+2. `.terminal-pane { overflow: hidden }` — xterm's canvas overhang is
+   clipped inside the pane instead of poking the page's scrollable overflow.
+
+No latch, no hysteresis in the refit path: with the viewport frozen, the
+A↔B driver cannot exist. The regression net is a real e2e invariant
+(`e2e/oscillation.spec.ts`, sshd-gated like `status.spec.ts`): after
+connect, `document.documentElement` must satisfy
+`scrollWidth ≤ clientWidth && scrollHeight ≤ clientHeight`, and the wrapped
+ResizeObserver callback count over a 6 s idle window must be bounded (≤ 10).
+Measured today: 171 callbacks in 6 s unfixed, 0 fixed.
+
+## 7. Testing
 
 1. **jsdom (logic tier):** panel switching — launch lands on Terminal with
    the other panels absent; Files shows the SFTP browser and hides the
@@ -126,8 +174,11 @@ structurally impossible: there is never a second child to misplace. The
    `ResizeObserverStub`: a 0×0 observation produces no `fit()`/`ssh:resize`;
    a real-size observation still does. The pre-existing resize test mocks
    `getBoundingClientRect` to a non-zero box for the same reason.
+4. **The oscillation invariant** — `e2e/oscillation.spec.ts` (§6): no
+   document overflow, bounded RO rate after connect. This is the failing
+   test that precedes the two CSS lines.
 
-## 7. Non-goals
+## 8. Non-goals
 
 - A side-by-side terminal+files split view — the owner explicitly chose
   exclusive panels; do not relitigate.

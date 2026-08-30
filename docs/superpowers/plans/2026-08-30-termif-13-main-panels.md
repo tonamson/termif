@@ -460,7 +460,173 @@ git commit -m "fix(desktop): terminal refit bails on zero-size containers"
 
 ---
 
-### Task 4: The real geometry tier — rewrite e2e/layout.spec.ts
+### Task 4: Stop the resize oscillation (the "flash scroll" bug)
+
+Measured 2026-08-30 (spec §6): once a session is open the document scrollbar
+toggles and the terminal re-fits forever — 28.5 ResizeObserver callbacks/s,
+`scrollHeight 804 > clientHeight 790`; with the fix, 0.0/s and no overflow.
+Root cause: `.terminal-pane` does not clip xterm's canvas and `body` does not
+forbid document scrolling, so every fit's few-pixel height change toggles the
+page scrollbar, which re-lays-out the terminal, which re-fits. The fix is the
+driver, not a smarter guard. The failing test lives in the e2e tier because
+jsdom cannot lay out.
+
+**Files:**
+- Create: `apps/desktop/e2e/oscillation.spec.ts`
+- Modify: `apps/desktop/src/renderer/styles/base.css:7-12` (the `html, body, #root` block)
+- Modify: `apps/desktop/src/renderer/styles/app.css:339-343` (`.terminal-pane`)
+
+**Interfaces:**
+- Consumes: docker test sshd on `127.0.0.1:22022` (`termif` / `termif-test-pw`, `docker-compose.test.yml`), the launch + seed + trust flow from `e2e/status.spec.ts:40-72`.
+- Produces: the standing oscillation invariant CI runs via `npm run e2e`.
+
+- [x] **Step 1: Write the failing test**
+
+Create `apps/desktop/e2e/oscillation.spec.ts`:
+
+```ts
+import { test, expect, _electron as electron } from '@playwright/test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+
+/** Main-panels spec §6: the document never scrolls and the terminal never
+    oscillates. Fails at ~171 RO callbacks / 6 s and scrollHeight 804 > 790
+    before the fix; bounded and clean after. */
+
+async function launch(userData: string) {
+  return electron.launch({
+    args: ['.', `--user-data-dir=${userData}`],
+    cwd: join(__dirname, '..'),
+    env: { ...process.env, NODE_ENV: 'test' },
+  })
+}
+
+test('no document overflow, no resize loop once a session is open', async () => {
+  const userData = mkdtempSync(join(tmpdir(), 'termif-osc-'))
+  const app = await launch(userData)
+  try {
+    // Wrap ResizeObserver before any page script runs so every callback —
+    // ours and xterm's internal ones — is counted.
+    await app.context().addInitScript(() => {
+      ;(window as unknown as { __roCount: number }).__roCount = 0
+      const Orig = window.ResizeObserver
+      window.ResizeObserver = class extends Orig {
+        constructor(cb: ResizeObserverCallback) {
+          super((entries, obs) => {
+            ;(window as unknown as { __roCount: number }).__roCount++
+            return cb(entries, obs)
+          })
+        }
+      }
+    })
+    const window = await app.firstWindow()
+
+    await window.getByRole('button', { name: /add host/i }).click()
+    await window.locator('#host-label').fill('osc-test')
+    await window.locator('#host-hostname').fill('127.0.0.1')
+    await window.locator('#host-port').fill('22022')
+    await window.locator('#host-username').fill('termif')
+    await window.locator('#host-password').fill('termif-test-pw')
+    await window.getByRole('button', { name: /^save$/i }).click()
+
+    // Skip gracefully when the test sshd is not running.
+    const reachable = await new Promise<boolean>((resolve) => {
+      import('node:net').then(({ createConnection }) => {
+        const socket = createConnection({ host: '127.0.0.1', port: 22022 }, () => {
+          socket.end()
+          resolve(true)
+        })
+        socket.on('error', () => resolve(false))
+      })
+    })
+    test.skip(!reachable, 'docker test sshd (127.0.0.1:22022) is not running')
+
+    await window.getByText('osc-test').waitFor()
+    await window.getByRole('button', { name: /connect/i }).first().click()
+    const trust = window.getByRole('button', { name: /trust and connect/i })
+    await trust.waitFor({ timeout: 8000 })
+    await trust.click()
+    await window.locator('.terminal-tabs__tab').first().waitFor({ timeout: 20000 })
+    await window.waitForTimeout(3000) // let the shell settle after the prompt
+
+    const before = await window.evaluate(() => (window as unknown as { __roCount: number }).__roCount)
+    await window.waitForTimeout(6000)
+    const after = await window.evaluate(() => (window as unknown as { __roCount: number }).__roCount)
+    const overflow = await window.evaluate(() => ({
+      sw: document.documentElement.scrollWidth,
+      cw: document.documentElement.clientWidth,
+      sh: document.documentElement.scrollHeight,
+      ch: document.documentElement.clientHeight,
+    }))
+
+    expect(overflow.sw).toBeLessThanOrEqual(overflow.cw)
+    expect(overflow.sh).toBeLessThanOrEqual(overflow.ch)
+    expect(after - before).toBeLessThanOrEqual(10)
+  } finally {
+    await app.close()
+    rmSync(userData, { recursive: true, force: true })
+  }
+})
+```
+
+- [x] **Step 2: Run it to verify it fails**
+
+```bash
+cd apps/desktop && npm run e2e -- oscillation
+```
+
+Expected: FAIL — `expect(overflow.sh).toBeLessThanOrEqual(overflow.ch)` (804 > 790) and/or the RO count (~170) above the bound. Skips offline.
+
+- [x] **Step 3: Apply the two-line fix**
+
+`apps/desktop/src/renderer/styles/base.css` — extend the existing block:
+
+```css
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* A fixed-viewport desktop shell: content never scrolls the document, so no
+   content change can resize the layout viewport (main-panels spec §6). */
+html,
+body {
+  overflow: hidden;
+}
+```
+
+`apps/desktop/src/renderer/styles/app.css` — the `.terminal-pane` rule:
+
+```css
+.terminal-pane {
+  position: absolute;
+  inset: 0;
+  padding: var(--space-2);
+  overflow: hidden;
+}
+```
+
+- [x] **Step 4: Run the oscillation spec, then the whole suite**
+
+```bash
+cd apps/desktop && npm run e2e -- oscillation && npm run e2e && npm test
+```
+
+Expected: oscillation PASS (≤ 10 callbacks, no overflow); all other e2e and vitest suites PASS.
+
+- [x] **Step 5: Commit**
+
+```bash
+git add apps/desktop/e2e/oscillation.spec.ts apps/desktop/src/renderer/styles
+git commit -m "fix(desktop): clip terminal overflow, kill document scrollbar oscillation"
+```
+
+---
+
+### Task 5: The real geometry tier — rewrite e2e/layout.spec.ts
 
 Plan 8's architecture promised this tier; the placeholder `test.skip`s itself (`e2e/layout.spec.ts:7`) — that is how Task 2's inversion class stayed invisible. Replace it with real assertions using the harness shape already proven by `e2e/smoke.spec.ts`. Written against the post-Task-2 code, all four tests pass; if run against pre-Task-2 code they fail — that is the tier working.
 
@@ -616,7 +782,7 @@ git commit -m "test(desktop): real geometry tier for main panels (pays Plan 8 e2
 
 ---
 
-### Task 5: Docs and release 0.1.7
+### Task 6: Docs and release 0.1.7
 
 **Files:**
 - Modify: `docs/superpowers/README.md` (plan table + owed-work note)
