@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { SessionManager } from '@termif/core'
 import '@xterm/xterm/css/xterm.css'
+import { terminalTheme } from '../styles/terminalTheme.js'
 
 export interface TerminalPaneProps {
   tabId: string
@@ -28,6 +29,7 @@ export function TerminalPane({ tabId, sessions, active }: TerminalPaneProps) {
     if (element === null) return
 
     const term = new Terminal({
+      theme: terminalTheme,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       fontSize: 13,
       cursorBlink: true,

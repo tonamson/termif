@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { TerminalPane } from '../../src/renderer/views/TerminalPane.js'
+import { palette } from '../../src/renderer/styles/palette.js'
 
 /**
  * xterm.js needs a real canvas and layout, which jsdom does not provide, so the
@@ -12,11 +13,15 @@ const written: (string | Uint8Array)[] = []
 const disposed: string[] = []
 let onDataHandler: ((data: string) => void) | null = null
 let onResizeHandler: ((size: { cols: number; rows: number }) => void) | null = null
+const constructed: { theme?: Record<string, string>; fontFamily?: string }[] = []
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: class {
     cols = 80
     rows = 24
+    constructor(options: { theme?: Record<string, string>; fontFamily?: string }) {
+      constructed.push(options)
+    }
     open = vi.fn()
     loadAddon = vi.fn()
     focus = vi.fn()
@@ -135,5 +140,19 @@ describe('TerminalPane', () => {
     rerender(<TerminalPane tabId="t1" sessions={sessions as never} active={false} />)
 
     expect(sessions.subscribeTab).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens the terminal with the app theme so it matches the window ground', async () => {
+    render(<TerminalPane tabId="t1" sessions={makeSessions() as never} active />)
+
+    await waitFor(() => expect(constructed.length).toBeGreaterThan(0))
+    const options = constructed[constructed.length - 1]
+
+    expect(options.theme?.background).toBe(palette.bgApp)
+    expect(options.theme?.foreground).toBe(palette.fg)
+    expect(options.theme?.cursor).toBe(palette.accent)
+    // All 16 ANSI slots present: a missing one silently falls back to xterm's.
+    expect(options.theme?.brightWhite).toBeTruthy()
+    expect(options.theme?.black).toBeTruthy()
   })
 })
