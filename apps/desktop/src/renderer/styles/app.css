@@ -14,7 +14,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 var(--titlebar-height);
+  flex: 0 0 var(--titlebar-h);
   padding-inline: var(--space-4);
   /* Room for the macOS traffic lights, which the OS still draws. */
   padding-inline-start: 88px;

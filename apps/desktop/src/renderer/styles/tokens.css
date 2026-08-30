@@ -48,7 +48,4 @@
   --z-inspector: 5;
   --z-sheet: 10;
   --z-palette: 20;
-
-  --titlebar-height: var(--titlebar-h);
-  --sidebar-width: var(--sidebar-w);
 }
