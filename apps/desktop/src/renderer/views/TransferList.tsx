@@ -33,10 +33,15 @@ export function TransferList({ transfers, onCancel }: TransferListProps) {
             {transfer.kind === 'upload' ? '↑' : '↓'} {transfer.remote}
           </span>
 
-          <span className="transfer__progress">
+          <progress
+            className="transfer__progress"
+            value={percentOf(transfer.done, transfer.total)}
+            max={100}
+            aria-label={`${percentOf(transfer.done, transfer.total)}%${transfer.total > 0n ? ` · ${formatBytes(transfer.done)} / ${formatBytes(transfer.total)}` : ''}`}
+          >
             {percentOf(transfer.done, transfer.total)}%
             {transfer.total > 0n && ` · ${formatBytes(transfer.done)} / ${formatBytes(transfer.total)}`}
-          </span>
+          </progress>
 
           {transfer.error !== null && (
             <span className="transfer__error">{t('transfer.failed', { reason: transfer.error })}</span>
