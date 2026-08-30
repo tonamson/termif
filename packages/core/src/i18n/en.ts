@@ -102,6 +102,17 @@ export const en = {
   'form.error.username': 'Enter a username.',
   'form.error.port': 'Port must be between 1 and 65535.',
 
+  'snippet.search': 'Search snippets',
+  'snippet.noMatch': 'No snippets match that search.',
+  'snippet.send': 'Send {label}',
+  'snippet.delete': 'Delete {label}',
+  'snippet.label': 'Label',
+  'snippet.command': 'Command',
+  'snippet.save': 'Save snippet',
+  'snippet.cancel': 'Cancel',
+  'snippet.new': 'New snippet',
+  'snippet.removeGlyph': '×',
+
   'sync.now': 'Sync now',
 
   'layout.tab.terminals': 'terminals',
