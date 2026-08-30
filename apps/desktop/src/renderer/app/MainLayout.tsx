@@ -11,9 +11,9 @@ import { Titlebar, type Pane } from '../views/Titlebar.js'
 import { useConnectFlow } from '../state/connectFlow.js'
 
 export function MainLayout({ app }: { app: App }) {
-  // Created once per mount and kept: recreating it would drop the loaded list.
   const [hostStore] = useState(() => createHostStore({ store: app.store }))
   const hosts = useStore(hostStore)
+  const prefs = useStore(app.prefs)
 
   const [pane, setPane] = useState<Pane>('terminals')
   const [editing, setEditing] = useState<{ id: string | null } | null>(null)
@@ -36,7 +36,17 @@ export function MainLayout({ app }: { app: App }) {
           <HostList
             hosts={hostStore.visibleHosts()}
             query={hosts.query}
+            collapsedGroups={prefs.collapsedGroups}
+            connectedIds={app.sessions.connectedHostIds()}
             onQueryChange={(q) => hostStore.setQuery(q)}
+            onToggleGroup={(name) =>
+              app.prefs.set(
+                'collapsedGroups',
+                prefs.collapsedGroups.includes(name)
+                  ? prefs.collapsedGroups.filter((g) => g !== name)
+                  : [...prefs.collapsedGroups, name],
+              )
+            }
             onConnect={(id) => void connect.start(id)}
             onEdit={(id) => setEditing({ id })}
             onDelete={(id) => void hostStore.remove(id)}

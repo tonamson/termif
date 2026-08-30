@@ -1,11 +1,15 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { t } from '@termif/core'
 import type { Host } from '@termif/core'
+import { groupHosts, type HostGroup } from '../state/grouping.js'
 
 export interface HostListProps {
   hosts: readonly Host[]
   query: string
+  collapsedGroups?: readonly string[]
+  connectedIds?: readonly string[]
   onQueryChange(query: string): void
+  onToggleGroup?: (name: string) => void
   onConnect(id: string): void
   onEdit(id: string): void
   onDelete(id: string): void
@@ -15,7 +19,10 @@ export interface HostListProps {
 export function HostList({
   hosts,
   query,
+  collapsedGroups = [],
+  connectedIds = [],
   onQueryChange,
+  onToggleGroup = () => {},
   onConnect,
   onEdit,
   onDelete,
@@ -42,6 +49,11 @@ export function HostList({
     }
   }
 
+  const searching = query.trim().length > 0
+  const groups: HostGroup[] = searching ? [{ name: '', hosts: [...hosts] }] : groupHosts(hosts)
+  const target = (host: Host): string =>
+    `${host.username}@${host.hostname}${host.port === 22 ? '' : `:${host.port}`}`
+
   return (
     <nav className="host-list">
       <div className="host-list__toolbar">
@@ -66,63 +78,73 @@ export function HostList({
           {query.trim().length === 0 ? t('host.empty') : t('host.noMatch')}
         </p>
       ) : (
-        <ul>
-          {hosts.map((host) => (
-            <li
-              key={host.id}
-              tabIndex={0}
-              onDoubleClick={() => onConnect(host.id)}
-              onKeyDown={(e) => onKeyDown(e, host.id)}
-            >
-              <span className="host-list__label">{host.label}</span>
-              <span className="host-list__target">
-                {host.username}@{host.hostname}
-                {host.port !== 22 && `:${host.port}`}
-              </span>
-
-              {host.tags.length > 0 && (
-                <span className="host-list__tags">
-                  {host.tags.map((tag) => (
-                    <span key={tag} className="tag">
-                      {tag}
-                    </span>
-                  ))}
-                </span>
-              )}
-
-              <span className="host-list__actions">
-                <button type="button" onClick={() => onConnect(host.id)}>
-                  {t('host.connect')}
-                </button>
-                <button type="button" onClick={() => onEdit(host.id)}>
-                  {t('host.edit', { label: host.label })}
-                </button>
-
-                {confirming === host.id ? (
-                  <>
-                    <button
-                      type="button"
-                      data-variant="danger"
-                      onClick={() => {
-                        setConfirming(null)
-                        onDelete(host.id)
-                      }}
-                    >
-                      {t('host.confirmDelete')}
-                    </button>
-                    <button type="button" onClick={() => setConfirming(null)}>
-                      {t('host.keep')}
-                    </button>
-                  </>
-                ) : (
-                  <button type="button" onClick={() => setConfirming(host.id)}>
-                    {t('host.delete', { label: host.label })}
+        <div className="host-list__scroll u-scroll">
+          {groups.map((group) => {
+            const collapsed = !searching && collapsedGroups.includes(group.name)
+            return (
+              <section key={group.name} className="host-list__group">
+                {group.name !== '' && (
+                  <button
+                    type="button"
+                    className="host-list__grouphead"
+                    aria-expanded={!collapsed}
+                    onClick={() => onToggleGroup(group.name)}
+                  >
+                    <span aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
+                    <span className="u-clip">{group.name}</span>
+                    <span className="host-list__count">{group.hosts.length}</span>
                   </button>
                 )}
-              </span>
-            </li>
-          ))}
-        </ul>
+                {!collapsed && (
+                  <ul>
+                    {group.hosts.map((host) => (
+                      <li
+                        key={host.id}
+                        tabIndex={0}
+                        data-state={connectedIds.includes(host.id) ? 'connected' : 'closed'}
+                        onKeyDown={(e) => onKeyDown(e, host.id)}
+                        onDoubleClick={() => onConnect(host.id)}
+                      >
+                        <span className="host-list__dot" aria-hidden="true" />
+                        <span className="host-list__label u-clip">{host.label}</span>
+                        <span className="host-list__target u-clip">{target(host)}</span>
+                        <span className="host-list__actions">
+                          <button type="button" onClick={() => onConnect(host.id)}>
+                            {t('host.connect')}
+                          </button>
+                          <button type="button" onClick={() => onEdit(host.id)}>
+                            {t('host.edit', { label: host.label })}
+                          </button>
+                          {confirming === host.id ? (
+                            <>
+                              <button
+                                type="button"
+                                data-variant="danger"
+                                onClick={() => {
+                                  setConfirming(null)
+                                  onDelete(host.id)
+                                }}
+                              >
+                                {t('host.confirmDelete')}
+                              </button>
+                              <button type="button" onClick={() => setConfirming(null)}>
+                                {t('host.keep')}
+                              </button>
+                            </>
+                          ) : (
+                            <button type="button" onClick={() => setConfirming(host.id)}>
+                              {t('host.delete', { label: host.label })}
+                            </button>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )
+          })}
+        </div>
       )}
     </nav>
   )

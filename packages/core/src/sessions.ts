@@ -221,6 +221,10 @@ export class SessionManager {
     return this.#sessions.get(sessionId)?.handleId ?? undefined
   }
 
+  connectedHostIds(): string[] {
+    return [...this.#sessions.values()].map((s) => s.host.id)
+  }
+
   // ---- internals ----
 
   async #openConnection(host: Host, credential: ConnectCredential): Promise<bigint> {
