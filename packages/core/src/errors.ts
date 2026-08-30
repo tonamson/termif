@@ -41,9 +41,45 @@ export function parseFfiError(e: unknown): CoreError {
   }
 
   const text = e instanceof Error ? e.message : String(e)
-  const match = CODE_PREFIX.exec(text)
+  // Electron's ipcRenderer wraps the native error as
+  // "Error invoking remote method 'termif:ssh:connect': Error: host_key_unknown: ..."
+  // so we look for the *last* code: message pair, not the first.
+  const wrapped = text.includes('Error invoking remote method')
+    ? (text.split('Error:').pop()?.trim() ?? text)
+    : text
+  const candidate = wrapped.includes('host_key_unknown') || wrapped.includes('host_key_mismatch')
+    ? wrapped
+    : text
+  // Try direct prefix first, then search for any embedded code pattern
+  let match = CODE_PREFIX.exec(candidate)
   if (match?.[1] !== undefined && match[2] !== undefined) {
     return new CoreError(match[1], match[2])
+  }
+  // Fallback: find last occurrence of "code: message" inside wrapped text
+  const all = [...text.matchAll(/([a-z][a-z0-9_]*):\s([^\n]+)/g)]
+  if (all.length > 0) {
+    const last = all[all.length - 1]!
+    const code = last[1]!
+    // Only accept known codes to avoid treating "host: 1.2.3.4" as code
+    const known = new Set([
+      'host_key_unknown',
+      'host_key_mismatch',
+      'auth',
+      'connect',
+      'timeout',
+      'sftp',
+      'forward',
+      'io',
+      'internal',
+      'no_such_session',
+      'no_such_channel',
+      'no_such_transfer',
+      'no_such_forward',
+    ])
+    if (known.has(code)) {
+      const msg = text.slice((last.index ?? 0) + code.length + 2).trim()
+      return new CoreError(code, msg)
+    }
   }
   return new CoreError('unknown', text)
 }

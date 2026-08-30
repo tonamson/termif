@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react'
-import { CoreError, t, type ConnectCredential, type Host, type Store } from '@termif/core'
+import { CoreError, parseFfiError, t, type ConnectCredential, type Host, type Store } from '@termif/core'
 import { HostKeyPrompt } from '../views/HostKeyPrompt.js'
 import type { App } from './boot.js'
 import type { HostStore } from './hostStore.js'
@@ -38,7 +38,7 @@ export type ConnectFailure =
   | { kind: 'message'; text: string }
 
 export function classifyConnectError(error: unknown): ConnectFailure {
-  const core = error instanceof CoreError ? error : new CoreError('unknown', String(error))
+  const core = parseFfiError(error)
 
   if (core.code === 'host_key_unknown') {
     return {
