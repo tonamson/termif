@@ -1,3 +1,6 @@
+import { readdir, stat } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { join, sep } from 'node:path'
 import { app, dialog, ipcMain, shell } from 'electron'
 import { SCHEMA_VERSION, type SqlValue } from '@termif/core'
 import { CHANNELS, type DbStatement, type SerialisedDirEntry } from '../shared/ipc.js'
@@ -50,6 +53,8 @@ export function handlerNames(): string[] {
     CHANNELS.appLog,
     CHANNELS.appGetLogPath,
     CHANNELS.appOpenLog,
+    CHANNELS.appLocalList,
+    CHANNELS.appLocalHome,
   ]
 }
 
@@ -246,4 +251,29 @@ export function registerHandlers(deps: HandlerDeps): void {
     const p = getLogPath()
     if (p !== null) await shell.openPath(p)
   })
+  ipcMain.handle(CHANNELS.appLocalList, async (_e, path: string): Promise<SerialisedDirEntry[]> => {
+    const names = await readdir(path, { withFileTypes: true })
+    const entries = await Promise.all(
+      names.map(async (dirent): Promise<SerialisedDirEntry | null> => {
+        const full = join(path, dirent.name)
+        try {
+          // A dangling symlink or a directory we cannot stat must not take the
+          // whole listing down, so each entry fails on its own.
+          const info = await stat(full)
+          return {
+            name: dirent.name,
+            size: String(info.size),
+            isDir: info.isDirectory(),
+            isSymlink: dirent.isSymbolicLink(),
+            mode: info.mode,
+            modifiedUnix: Math.floor(info.mtimeMs / 1000),
+          }
+        } catch {
+          return null
+        }
+      }),
+    )
+    return entries.filter((e): e is SerialisedDirEntry => e !== null)
+  })
+  ipcMain.handle(CHANNELS.appLocalHome, () => ({ path: homedir(), sep }))
 }

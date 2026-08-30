@@ -41,6 +41,8 @@ export const CHANNELS = Object.freeze({
   appLog: 'termif:app:log',
   appGetLogPath: 'termif:app:getLogPath',
   appOpenLog: 'termif:app:openLog',
+  appLocalList: 'termif:app:localList',
+  appLocalHome: 'termif:app:localHome',
 } as const)
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS]
@@ -107,6 +109,10 @@ export interface TermifApi {
     log(level: string, scope: string, message: string): Promise<void>
     getLogPath(): Promise<string | null>
     openLog(): Promise<void>
+    /** Lists a local directory in the same shape SFTP uses, so one pane component serves both sides. */
+    localList(path: string): Promise<SerialisedDirEntry[]>
+    /** Home directory plus the separator this OS uses, for the local pane's initial path. */
+    localHome(): Promise<{ path: string; sep: string }>
   }
 }
 

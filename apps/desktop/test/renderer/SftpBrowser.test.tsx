@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { SshDirEntry } from '@termif/core'
-import { SftpBrowserView } from '../../src/renderer/views/SftpBrowser.js'
+import { DRAG_TYPE, SftpBrowserView } from '../../src/renderer/views/SftpBrowser.js'
 import { TransferList } from '../../src/renderer/views/TransferList.js'
 
 const entry = (name: string, isDir = false, size = 1024n): SshDirEntry => ({
@@ -153,5 +153,53 @@ describe('TransferList', () => {
       />,
     )
     expect(screen.getByText(/0%/)).toBeInTheDocument()
+  })
+})
+
+describe('SftpBrowserView as one pane of a pair', () => {
+  it('hides the modifying controls on a read-only pane', () => {
+    render(<SftpBrowserView {...props} canModify={false} />)
+    expect(screen.queryByLabelText(/choose a local file/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/new folder name/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/delete notes\.txt/i)).not.toBeInTheDocument()
+  })
+
+  it('offers a copy button for files but not folders when a target exists', async () => {
+    const onSend = vi.fn()
+    render(<SftpBrowserView {...props} onSend={onSend} />)
+
+    expect(screen.queryByLabelText(/copy docs to the other pane/i)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByLabelText(/copy notes\.txt to the other pane/i))
+    expect(onSend).toHaveBeenCalledWith('notes.txt')
+  })
+
+  it('renders the source picker it is handed', () => {
+    render(<SftpBrowserView {...props} header={<span>picker</span>} />)
+    expect(screen.getByText('picker')).toBeInTheDocument()
+  })
+
+  it('walks into a folder with the separator it was given', async () => {
+    const onOpen = vi.fn()
+    render(
+      <SftpBrowserView
+        {...props}
+        path={'C:\\Users\\me'}
+        onOpen={onOpen}
+        join={(base, name) => `${base}\\${name}`}
+      />,
+    )
+    await userEvent.dblClick(screen.getByText('docs'))
+    expect(onOpen).toHaveBeenCalledWith('C:\\Users\\me\\docs')
+  })
+
+  it('copies a file dropped in from the other pane', () => {
+    const onReceive = vi.fn()
+    const { container } = render(<SftpBrowserView {...props} onReceive={onReceive} />)
+    const pane = container.querySelector('.sftp') as HTMLElement
+    const data = { getData: (type: string) => (type === DRAG_TYPE ? 'notes.txt' : '') }
+
+    fireEvent.drop(pane, { dataTransfer: data })
+
+    expect(onReceive).toHaveBeenCalledWith('notes.txt')
   })
 })

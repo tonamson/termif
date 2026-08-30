@@ -11,7 +11,9 @@ export function TerminalTabs({ app }: { app: App }) {
   const { tabs, activeId } = useStore(tabStore)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const bar = useRef<HTMLDivElement>(null)
-  const [visibleCount, setVisibleCount] = useState(tabs.length)
+  // At least one tab is always shown: measuring happens after layout, and a
+  // zero here would hide the only tab behind the overflow menu.
+  const [visibleCount, setVisibleCount] = useState(1)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
 
   // Tabs are opened by the connect flow through the session manager, so this
@@ -61,7 +63,9 @@ export function TerminalTabs({ app }: { app: App }) {
     const observer = new ResizeObserver(measure)
     observer.observe(element)
     return () => observer.disconnect()
-  }, [])
+    // The bar does not exist until the first tab does, so re-attach when the
+    // count changes rather than only on mount.
+  }, [tabs.length])
 
   const shown = tabs.slice(0, visibleCount)
   const hidden = tabs.slice(visibleCount)

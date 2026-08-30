@@ -21,7 +21,7 @@ export const en = {
   'hostkey.mismatch.body':
     'The key changed from {expected} to {got}. This can mean the server was rebuilt, or that the connection is being intercepted. Termif will not connect until you remove the old key deliberately.',
 
-  'terminal.empty': 'Select a host, or ⌘N to add one',
+  'terminal.empty': 'Double-click a host in the sidebar (or press Connect) to open a terminal. ⌘N adds one.',
   'sftp.empty.noSession': 'Connect to a host to browse files',
   'terminal.close': 'Close {title}',
 
@@ -52,6 +52,13 @@ export const en = {
   'sftp.confirmDeleteFolder': 'Confirm delete folder and contents',
   'sftp.keep': 'Keep',
   'sftp.noSession': 'Connect to a host to browse its files.',
+  'sftp.sourceLabel': 'This pane shows',
+  'sftp.local': 'Local',
+  'sftp.remote': 'Server',
+  'sftp.send': 'Copy {name} to the other pane',
+  'sftp.sendShort': 'Copy',
+  'sftp.sameSource': 'Both panes show the same place. Switch one to copy between them.',
+  'sftp.dirCopyUnsupported': 'Only files can be copied. Open the folder and copy its files.',
 
   'forward.active': 'Forwarding {from} to {to}',
   'forward.iosForegroundOnly':
@@ -80,6 +87,8 @@ export const en = {
   'host.search': 'Search hosts',
   'host.add': 'Add host',
   'host.connect': 'Connect',
+  'host.editShort': 'Edit',
+  'host.deleteShort': 'Delete',
   'connect.noCredential': 'This host has no stored credential. Edit it to add one.',
   'host.edit': 'Edit {label}',
   'host.delete': 'Delete {label}',

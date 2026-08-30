@@ -58,6 +58,8 @@ const api: TermifApi = {
     log: (level, scope, message) => ipcRenderer.invoke(CHANNELS.appLog, level, scope, message),
     getLogPath: () => ipcRenderer.invoke(CHANNELS.appGetLogPath),
     openLog: () => ipcRenderer.invoke(CHANNELS.appOpenLog),
+    localList: (path) => ipcRenderer.invoke(CHANNELS.appLocalList, path),
+    localHome: () => ipcRenderer.invoke(CHANNELS.appLocalHome),
   },
 }
 
