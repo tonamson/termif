@@ -17,6 +17,23 @@ export async function columnsOf(db: LocalDb, table: string): Promise<Set<string>
   return new Set(rows.map((r) => r.name))
 }
 
+async function repairCredentials(db: LocalDb): Promise<void> {
+  const cols = await columnsOf(db, 'credentials')
+  if (cols.size === 0 || !cols.has('secret')) {
+    await db.exec(`DROP TABLE IF EXISTS credentials`)
+    await db.exec(MIGRATIONS[1]!)
+    await db.exec(MIGRATIONS[6]!)
+    await db.exec(`ALTER TABLE credentials ADD COLUMN passphrase TEXT`).catch(() => {})
+    for (const k of [...STALE_META_KEYS, 'vaultMeta']) {
+      await db.exec(`DELETE FROM meta WHERE key = ?`, [k])
+    }
+    return
+  }
+  if (!cols.has('passphrase')) {
+    await db.exec(`ALTER TABLE credentials ADD COLUMN passphrase TEXT`).catch(() => {})
+  }
+}
+
 export type RowKind = 'hosts' | 'credentials' | 'snippets'
 type ChangeListener = (kind: RowKind) => void
 
@@ -103,6 +120,7 @@ export class Store {
     for (const sql of MIGRATIONS) {
       await platform.db.exec(sql)
     }
+    await repairCredentials(platform.db)
     const current = await platform.db.query<{ value: string }>(
       'SELECT value FROM meta WHERE key = ?',
       ['schemaVersion'],
