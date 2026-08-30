@@ -255,36 +255,9 @@
   padding: var(--space-2);
 }
 
-/* --- Sync badge --------------------------------------------------------- */
-.sync-badge {
-  width: 100%;
-  justify-content: flex-start;
-  font-size: 12px;
-}
-.sync-badge::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--fg-subtle);
-  flex: 0 0 auto;
-}
-.sync-badge--running::before {
-  background: var(--accent);
-  animation: termif-pulse 1.2s ease-in-out infinite;
-}
-.sync-badge--failed::before {
-  background: var(--danger);
-}
-.sync-badge--idle::before {
-  background: var(--ok);
-}
-
 /* --- Overlays ----------------------------------------------------------- */
-/* These three are bare markup in the page flow today. */
 .hostkey,
-.snippet-palette,
-.sign-in {
+.snippet-palette {
   position: fixed;
   inset: 0;
   z-index: 10;
@@ -295,8 +268,7 @@
   background: rgb(0 0 0 / 0.55);
 }
 .hostkey > *,
-.snippet-palette > *,
-.sign-in > * {
+.snippet-palette > * {
   width: 100%;
   max-width: 520px;
   padding: var(--space-5);
@@ -318,7 +290,6 @@
 
 .hostkey__actions,
 .host-form__actions,
-.sign-in__actions,
 .forwards__form {
   display: flex;
   gap: var(--space-2);
@@ -340,24 +311,13 @@
   font-size: 12px;
 }
 
-/* --- Host form, setup, unlock ------------------------------------------- */
+/* --- Host form -------------------------------------------------------- */
 .host-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   max-width: 520px;
   padding: var(--space-5);
-}
-
-.setup,
-.unlock {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  width: 100%;
-  max-width: 380px;
-  margin: auto;
-  padding: var(--space-6);
 }
 
 /* --- SFTP --------------------------------------------------------------- */

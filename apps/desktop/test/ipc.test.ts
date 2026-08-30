@@ -15,7 +15,7 @@ describe('CHANNELS', () => {
 
   it('covers every area the app needs', () => {
     const areas = new Set(Object.values(CHANNELS).map((c) => c.split(':')[1]))
-    expect(areas).toEqual(new Set(['ssh', 'db', 'secure', 'net', 'auth', 'app']))
+    expect(areas).toEqual(new Set(['ssh', 'db', 'app']))
   })
 
   it('is frozen, so a typo cannot add a channel at runtime', () => {

@@ -244,21 +244,21 @@ Before the vault, because `sheet/rows.ts` and `sheet/client.ts` both reference
 
 ### Task 8 — screens
 
-- [ ] Failing test: rendering `AppRoot` against an empty database shows the host
+- [x] Failing test: rendering `AppRoot` against an empty database shows the host
       list. Assert on the absence of any password field, not only on the
       presence of the list — the old flow's failure mode is a stuck screen.
-- [ ] Delete `views/SetupScreen.tsx`, `views/UnlockScreen.tsx`,
+- [x] Delete `views/SetupScreen.tsx`, `views/UnlockScreen.tsx`,
       `views/SignInScreen.tsx`, `views/SyncBadge.tsx` and any test rendering
       them.
-- [ ] `app/AppRoot.tsx`: one branch — loading, then `MainLayout`. No setup, no
+- [x] `app/AppRoot.tsx`: one branch — loading, then `MainLayout`. No setup, no
       unlock, no lock action.
-- [ ] `app/MainLayout.tsx`: remove the sign-in slot, the sync badge, and the
+- [x] `app/MainLayout.tsx`: remove the sign-in slot, the sync badge, and the
       `vaultStore` references.
-- [ ] Remove the now-unused `.sign-in`, `.setup`, `.unlock`, and sync-badge
+- [x] Remove the now-unused `.sign-in`, `.setup`, `.unlock`, and sync-badge
       rules from `renderer/styles/app.css`. Dead CSS reads as intentional to
       whoever comes next.
-- [ ] `npm test` in `apps/desktop` green.
-- [ ] `git commit -m "refactor(desktop): drop the setup, unlock, and sign-in screens"`
+- [x] `npm test` in `apps/desktop` green.
+- [x] `git commit -m "refactor(desktop): drop the setup, unlock, and sign-in screens"`
 
 ### Task 9 — the credential read and write path
 

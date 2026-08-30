@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
-import { t } from '@termif/core'
-import type { SyncStatus } from '@termif/core'
 import { useStore } from '../state/useStore.js'
 import { createHostStore } from '../state/hostStore.js'
 import type { App } from '../state/boot.js'
 import { HostList } from '../views/HostList.js'
 import { HostForm } from '../views/HostForm.js'
-import { SyncBadge } from '../views/SyncBadge.js'
-import { SignInScreen } from '../views/SignInScreen.js'
 import { TerminalTabs } from '../views/TerminalTabs.js'
 import { SftpBrowser } from '../views/SftpBrowser.js'
 import { ForwardPanel } from '../views/ForwardPanel.js'
@@ -19,29 +15,20 @@ export function MainLayout({ app }: { app: App }) {
   const [hostStore] = useState(() =>
     createHostStore({
       store: app.store,
-      vault: () => app.vaultStore.vault(),
+      vault: () => null,
     }),
   )
   const hosts = useStore(hostStore)
 
   const [pane, setPane] = useState<Pane>('terminals')
   const [editing, setEditing] = useState<{ id: string | null } | null>(null)
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(
-    app.sync?.status ?? { state: 'idle', lastSuccessAt: null, lastError: null },
-  )
 
   const connect = useConnectFlow(app, hostStore)
 
   useEffect(() => {
     void hostStore.refresh()
-    // The store emits on every local write, so the list stays live without polling.
     return app.store.onChange(() => void hostStore.refresh())
   }, [app.store, hostStore])
-
-  const [signingIn, setSigningIn] = useState(false)
-  const [hasSync, setHasSync] = useState(app.sync !== null)
-
-  useEffect(() => app.sync?.onStatus(setSyncStatus), [app.sync, hasSync])
 
   const editingHost =
     editing?.id == null ? null : (hosts.hosts.find((h) => h.id === editing.id) ?? null)
@@ -60,48 +47,26 @@ export function MainLayout({ app }: { app: App }) {
             onDelete={(id) => void hostStore.remove(id)}
             onAdd={() => setEditing({ id: null })}
           />
-
-          <div className="layout__account">
-            {hasSync ? (
-              <SyncBadge status={syncStatus} onSyncNow={() => void app.sync?.syncNow()} />
-            ) : (
-              <button type="button" onClick={() => setSigningIn(true)}>
-                {t('sync.signIn')}
-              </button>
-            )}
-          </div>
-
-          {signingIn && (
-            <SignInScreen
-              app={app}
-              onDone={() => {
-                setSigningIn(false)
-                setHasSync(true)
-                setSyncStatus(app.sync?.status ?? syncStatus)
-              }}
-              onCancel={() => setSigningIn(false)}
-            />
-          )}
         </aside>
 
-      <main className="layout__main">
-        {editing !== null ? (
-          <HostForm
-            host={editingHost}
-            onSave={async (input, secret) => {
-              await hostStore.save(input, secret)
-              setEditing(null)
-            }}
-            onCancel={() => setEditing(null)}
-          />
-        ) : pane === 'terminals' ? (
-          <TerminalTabs app={app} />
-        ) : pane === 'files' ? (
-          <SftpBrowser app={app} />
-        ) : (
-          <ForwardPanel app={app} />
-        )}
-      </main>
+        <main className="layout__main">
+          {editing !== null ? (
+            <HostForm
+              host={editingHost}
+              onSave={async (input, secret) => {
+                await hostStore.save(input, secret)
+                setEditing(null)
+              }}
+              onCancel={() => setEditing(null)}
+            />
+          ) : pane === 'terminals' ? (
+            <TerminalTabs app={app} />
+          ) : pane === 'files' ? (
+            <SftpBrowser app={app} />
+          ) : (
+            <ForwardPanel app={app} />
+          )}
+        </main>
       </div>
       {connect.prompt}
     </div>
