@@ -19,7 +19,12 @@ export async function resolveCredential(
     )
   }
 
-  return credential.kind === 'password' ? { password: credential.secret } : { privateKeyPem: credential.secret }
+  return credential.kind === 'password'
+    ? { password: credential.secret }
+    : {
+        privateKeyPem: credential.secret,
+        ...(credential.passphrase === null ? {} : { passphrase: credential.passphrase }),
+      }
 }
 
 export type ConnectFailure =

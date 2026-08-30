@@ -5,6 +5,7 @@ export interface SecretInput {
   kind: 'password' | 'key'
   label: string
   secret: string
+  passphrase: string | null
 }
 
 export interface HostState {
@@ -77,6 +78,7 @@ export function createHostStore(deps: HostStoreDeps): HostStore {
           label: secret.label,
           kind: secret.kind,
           secret: secret.secret,
+          passphrase: secret.passphrase,
         })
         authRef = credential.id
       }

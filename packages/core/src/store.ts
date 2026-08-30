@@ -19,8 +19,9 @@ type StorePlatform = Pick<Platform, 'db' | 'now'>
 
 /** Fields the caller supplies; the store owns id, updatedAt, and deleted. */
 export type HostInput = Omit<Host, 'id' | 'updatedAt' | 'deleted'> & { id?: string }
-export type CredentialInput = Omit<StoredCredential, 'id' | 'updatedAt' | 'deleted'> & {
+export type CredentialInput = Omit<StoredCredential, 'id' | 'updatedAt' | 'deleted' | 'passphrase'> & {
   id?: string
+  passphrase?: string | null
 }
 export type SnippetInput = Omit<Snippet, 'id' | 'updatedAt' | 'deleted'> & { id?: string }
 
@@ -107,11 +108,13 @@ export class Store {
         'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
         ['schemaVersion', String(SCHEMA_VERSION)],
       )
+      // New DB at version 3 needs passphrase column even though MIGRATIONS creates old shape
+      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
     } else if (version === '1') {
       await platform.db.exec('DROP TABLE IF EXISTS credentials')
-      // MIGRATIONS[1] is the credentials CREATE with `secret`; MIGRATIONS[6] is credentials_updated_at
       await platform.db.exec(MIGRATIONS[1]!)
       await platform.db.exec(MIGRATIONS[6]!)
+      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
       for (const k of STALE_META_KEYS) {
         await platform.db.exec('DELETE FROM meta WHERE key = ?', [k])
       }
@@ -119,8 +122,26 @@ export class Store {
         'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
         ['schemaVersion', String(SCHEMA_VERSION)],
       )
+    } else if (version === '2') {
+      await platform.db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
+      await platform.db.exec(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['schemaVersion', String(SCHEMA_VERSION)],
+      )
     }
     return new Store(platform.db, platform.now)
+  }
+
+  async migrate(): Promise<void> {
+    const current = await this.#db.query<{ value: string }>('SELECT value FROM meta WHERE key = ?', ['schemaVersion'])
+    const version = current[0]?.value ?? null
+    if (version === '2') {
+      await this.#db.exec('ALTER TABLE credentials ADD COLUMN passphrase TEXT').catch(() => {})
+      await this.#db.exec(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        ['schemaVersion', String(SCHEMA_VERSION)],
+      )
+    }
   }
 
   onChange(listener: ChangeListener): () => void {
@@ -216,6 +237,7 @@ export class Store {
 
   async upsertCredential(input: CredentialInput): Promise<StoredCredential> {
     const credential = storedCredentialSchema.parse({
+      passphrase: null,
       ...input,
       id: input.id ?? newId(),
       updatedAt: this.#now(),
@@ -236,12 +258,12 @@ export class Store {
 
   async #writeCredential(c: StoredCredential): Promise<void> {
     await this.#db.exec(
-      `INSERT INTO credentials (id, label, kind, secret, updated_at, deleted)
-        VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO credentials (id, label, kind, secret, passphrase, updated_at, deleted)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           label = excluded.label, kind = excluded.kind, secret = excluded.secret,
-          updated_at = excluded.updated_at, deleted = excluded.deleted`,
-      [c.id, c.label, c.kind, c.secret, c.updatedAt, c.deleted ? 1 : 0],
+          passphrase = excluded.passphrase, updated_at = excluded.updated_at, deleted = excluded.deleted`,
+      [c.id, c.label, c.kind, c.secret, c.passphrase, c.updatedAt, c.deleted ? 1 : 0],
     )
   }
 
@@ -414,6 +436,7 @@ interface CredentialRow {
   label: string
   kind: string
   secret: string
+  passphrase: string | null
   updated_at: string
   deleted: number
 }
@@ -465,6 +488,7 @@ function toCredential(row: CredentialRow): StoredCredential {
     label: row.label,
     kind: row.kind,
     secret: row.secret,
+    passphrase: row.passphrase ?? null,
     updatedAt: row.updated_at,
     deleted: row.deleted === 1,
   })

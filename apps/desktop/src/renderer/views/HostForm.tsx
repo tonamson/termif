@@ -56,7 +56,8 @@ export function HostForm({ host, onSave, onCancel }: HostFormProps) {
         : {
             kind: authType,
             label: `${input.label} ${authType}`,
-            secret: authType === 'key' && passphrase.length > 0 ? secret : secret,
+            secret,
+            passphrase: authType === 'key' && passphrase.length > 0 ? passphrase : null,
           }
 
     await onSave(input, secretInput)
