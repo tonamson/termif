@@ -1,55 +1,97 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 /**
- * One end-to-end test, deliberately: it covers the path no unit test can — the
- * real main process, the real preload bridge, the real SQLite file — and stops
- * there. UI churns, and a broad end-to-end suite becomes maintenance debt
- * (spec §8).
+ * Local-only smoke: no vault, no Google. The single portable file is
+ * termif.sqlite — add a host, restart, copy the file to a fresh directory,
+ * and it appears without any prompt (spec §3, plan 6 task 11).
  */
-test('creates a vault, adds a host, and keeps it across a restart', async () => {
+
+async function launch(userData: string) {
+  return electron.launch({
+    args: ['.', `--user-data-dir=${userData}`],
+    cwd: join(__dirname, '..'),
+    env: { ...process.env, NODE_ENV: 'test' },
+  })
+}
+
+function copyDatabase(fromDir: string, toDir: string) {
+  copyFileSync(join(fromDir, 'termif.sqlite'), join(toDir, 'termif.sqlite'))
+  for (const suffix of ['-wal', '-shm']) {
+    const src = join(fromDir, `termif.sqlite${suffix}`)
+    if (existsSync(src)) copyFileSync(src, join(toDir, `termif.sqlite${suffix}`))
+  }
+}
+
+test('adds a host and keeps it across a restart', async () => {
   const userData = mkdtempSync(join(tmpdir(), 'termif-e2e-'))
+  try {
+    const app = await launch(userData)
+    const window = await app.firstWindow()
 
-  const launch = async () =>
-    electron.launch({
-      args: ['.', `--user-data-dir=${userData}`],
-      cwd: join(__dirname, '..'),
-      env: { ...process.env, NODE_ENV: 'test' },
-    })
+    // No vault prompt — empty database boots straight to the host list.
+    await expect(window.getByText(/No hosts yet/i)).toBeVisible()
+    await expect(window.getByRole('heading', { name: /choose a master password/i })).toBeHidden()
+    await expect(window.getByRole('heading', { name: /vault locked/i })).toBeHidden()
 
-  const app = await launch()
-  const window = await app.firstWindow()
+    await window.getByRole('button', { name: /Add host/i }).click()
+    await window.locator('#host-label').fill('e2e-host')
+    await window.locator('#host-hostname').fill('e2e.example.com')
+    await window.locator('#host-username').fill('tester')
+    await window.getByRole('button', { name: /^Save$/i }).click()
 
-  // First run: the vault does not exist yet.
-  await expect(window.getByRole('heading', { name: /choose a master password/i })).toBeVisible()
+    await expect(window.getByText('e2e-host')).toBeVisible()
+    await app.close()
 
-  await window.getByLabel(/enter your master password/i).fill('e2e-test-password')
-  await window.getByLabel('Confirm').fill('e2e-test-password')
-  await window.getByRole('button', { name: /create vault/i }).click()
+    const restarted = await launch(userData)
+    const restartedWindow = await restarted.firstWindow()
 
-  // Add a host.
-  await window.getByRole('button', { name: /add host/i }).click()
-  await window.getByLabel(/^label/i).fill('e2e-host')
-  await window.getByLabel(/hostname/i).fill('e2e.example.com')
-  await window.getByLabel(/username/i).fill('tester')
-  await window.getByRole('button', { name: /^save/i }).click()
+    // No unlock prompt on restart — same file, same hosts.
+    await expect(restartedWindow.getByRole('heading', { name: /choose a master password/i })).toBeHidden()
+    await expect(restartedWindow.getByRole('heading', { name: /vault locked/i })).toBeHidden()
+    await expect(restartedWindow.getByText('e2e-host')).toBeVisible()
 
-  await expect(window.getByText('e2e-host')).toBeVisible()
-  await app.close()
+    await restarted.close()
+  } finally {
+    rmSync(userData, { recursive: true, force: true })
+  }
+})
 
-  // Second run: the vault is on disk, so it asks to unlock rather than to set up.
-  const restarted = await launch()
-  const restartedWindow = await restarted.firstWindow()
+test('copying termif.sqlite makes the host appear on a fresh user-data dir without any prompt', async () => {
+  const userDataA = mkdtempSync(join(tmpdir(), 'termif-e2e-A-'))
+  const userDataB = mkdtempSync(join(tmpdir(), 'termif-e2e-B-'))
+  try {
+    const appA = await launch(userDataA)
+    const windowA = await appA.firstWindow()
 
-  await expect(restartedWindow.getByRole('heading', { name: /vault locked/i })).toBeVisible()
-  await restartedWindow.getByLabel(/enter your master password/i).fill('e2e-test-password')
-  await restartedWindow.getByRole('button', { name: /^unlock/i }).click()
+    await expect(windowA.getByText(/No hosts yet/i)).toBeVisible()
+    await windowA.getByRole('button', { name: /Add host/i }).click()
+    await windowA.locator('#host-label').fill('portable-host')
+    await windowA.locator('#host-hostname').fill('portable.example.com')
+    await windowA.locator('#host-username').fill('tester')
+    await windowA.getByRole('button', { name: /^Save$/i }).click()
+    await expect(windowA.getByText('portable-host')).toBeVisible()
+    await appA.close()
 
-  // The host survived, which means the local database is doing its job.
-  await expect(restartedWindow.getByText('e2e-host')).toBeVisible()
+    // B starts empty — copying only the sqlite file ports the host.
+    expect(existsSync(join(userDataB, 'termif.sqlite'))).toBe(false)
+    expect(existsSync(join(userDataB, 'secure.json'))).toBe(false)
+    expect(existsSync(join(userDataB, 'known_hosts'))).toBe(false)
 
-  await restarted.close()
-  rmSync(userData, { recursive: true, force: true })
+    copyDatabase(userDataA, userDataB)
+
+    const appB = await launch(userDataB)
+    const windowB = await appB.firstWindow()
+
+    await expect(windowB.getByRole('heading', { name: /choose a master password/i })).toBeHidden()
+    await expect(windowB.getByRole('heading', { name: /vault locked/i })).toBeHidden()
+    await expect(windowB.getByText('portable-host')).toBeVisible()
+
+    await appB.close()
+  } finally {
+    rmSync(userDataA, { recursive: true, force: true })
+    rmSync(userDataB, { recursive: true, force: true })
+  }
 })

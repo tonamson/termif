@@ -303,20 +303,20 @@ Spec §6. The database is the source of truth; the file is a derived cache.
 
 The point of the whole plan, and the only task that proves it.
 
-- [ ] Failing test: given a `termif.sqlite` copied from a different user-data
+- [x] Failing test: given a `termif.sqlite` copied from a different user-data
       directory and nothing else — no `secure.json`, no `known_hosts` file —
       `bootApp` lists that database's hosts, returns their secrets, and its
       trusted host keys are present.
-- [ ] Rewrite `e2e/smoke.spec.ts`: no vault steps. Launch, add a host, restart,
+- [x] Rewrite `e2e/smoke.spec.ts`: no vault steps. Launch, add a host, restart,
       the host is still listed.
-- [ ] Add to the e2e run: copy the resulting `termif.sqlite` into a second
+- [x] Add to the e2e run: copy the resulting `termif.sqlite` into a second
       temporary user-data directory, launch there, and assert the host appears
       without any prompt.
-- [ ] Write `docs/portability.md`: which file, where it lives on macOS and
+- [x] Write `docs/portability.md`: which file, where it lives on macOS and
       Windows, how to copy it safely, and the warning from spec §3 — it holds
       every SSH password in plaintext, so it does not belong in a git repo, a
       shared drive, a cloud-sync folder, or a bug report.
-- [ ] `git commit -m "feat: make the database the whole configuration"`
+- [x] `git commit -m "feat: make the database the whole configuration"`
 
 ### Task 12 — the record
 
