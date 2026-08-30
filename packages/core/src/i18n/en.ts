@@ -52,6 +52,9 @@ export const en = {
   'sync.signIn.cancel': 'Not now',
   'sync.signOut': 'Disconnect Google',
 
+  'terminal.empty': 'Connect to a host to open a terminal.',
+  'terminal.close': 'Close {title}',
+
   'session.reconnecting': 'Connection lost. Reconnecting…',
   'session.reconnected':
     'Reconnected. This is a new shell — scrollback is kept, but the previous session ended.',
