@@ -7,3 +7,8 @@ target/
 node_modules/
 dist/
 tools/
+
+# electron-vite build output and Playwright artifacts
+out/
+test-results/
+playwright-report/

@@ -6727,7 +6727,7 @@ git commit -m "feat(desktop): add SFTP browser with transfers and progress"
 - Produces an `electron-builder` config for macOS (arm64 + x64 dmg) and Windows (x64 nsis).
 - Produces one Playwright test that launches the packaged main process, creates a vault, adds a host, and asserts it persists across a restart. One end-to-end test, not a suite: UI churns, and cheap UI tests become debt (spec §8).
 
-- [ ] **Step 1: Write the failing forward-panel test**
+- [x] **Step 1: Write the failing forward-panel test**
 
 `apps/desktop/test/renderer/ForwardPanel.test.tsx`:
 
@@ -6846,7 +6846,7 @@ describe('ForwardPanelView', () => {
 })
 ```
 
-- [ ] **Step 2: Write the forward panel**
+- [x] **Step 2: Write the forward panel**
 
 `apps/desktop/src/renderer/views/ForwardPanel.tsx`:
 
@@ -7060,12 +7060,12 @@ export function ForwardPanel({ app }: { app: App }) {
 }
 ```
 
-- [ ] **Step 3: Run the forward test**
+- [x] **Step 3: Run the forward test**
 
 Run: `cd apps/desktop && npx vitest run test/renderer/ForwardPanel.test.tsx`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 4: Write the packaging config**
+- [x] **Step 4: Write the packaging config**
 
 `apps/desktop/electron-builder.yml`:
 
@@ -7130,7 +7130,7 @@ linux:
 </plist>
 ```
 
-- [ ] **Step 5: Write the end-to-end smoke test**
+- [x] **Step 5: Write the end-to-end smoke test**
 
 `apps/desktop/e2e/smoke.spec.ts`:
 
@@ -7212,7 +7212,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 6: Run the whole local gate**
+- [x] **Step 6: Run the whole local gate**
 
 Run:
 
@@ -7226,7 +7226,7 @@ npm run e2e
 
 Expected: typecheck clean, all unit tests pass, the build produces `out/`, and the smoke test passes. The smoke test needs the built app, so `build` must run first.
 
-- [ ] **Step 7: Write the CI workflow**
+- [x] **Step 7: Write the CI workflow**
 
 `.github/workflows/desktop.yml`:
 
@@ -7288,7 +7288,7 @@ jobs:
         run: npm run e2e
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add apps/desktop .github/workflows/desktop.yml

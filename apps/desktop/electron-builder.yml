@@ -1,0 +1,36 @@
+appId: com.termif.desktop
+productName: Termif
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+
+# The native addon must ship unpacked: a .node inside app.asar cannot be loaded.
+asarUnpack:
+  - '**/*.node'
+  - node_modules/better-sqlite3/**
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # Hardened runtime is required for notarisation; the entitlements file allows
+  # the JIT the renderer needs.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Development

@@ -7,6 +7,7 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
+    "e2e": "playwright test e2e",
     "package": "electron-vite build && electron-builder"
   },
   "dependencies": {
