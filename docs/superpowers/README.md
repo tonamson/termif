@@ -16,7 +16,7 @@ not "not written yet" — it is out of v1 scope. Three plans, not four.
 |---|---|---|---|---|
 | 1 | [`plans/2026-08-28-termif-01-ssh-core.md`](plans/2026-08-28-termif-01-ssh-core.md) — Rust `ssh-core` + napi bridge | 12 | not started | 2, 3 |
 | 2 | [`plans/2026-08-28-termif-02-core-ts.md`](plans/2026-08-28-termif-02-core-ts.md) — shared TypeScript core | 12 | **complete (2026-08-30)** — all 73 steps done, 138 tests green | 3 |
-| 3 | [`plans/2026-08-28-termif-03-desktop.md`](plans/2026-08-28-termif-03-desktop.md) — Electron desktop shell | 12 | not started | — |
+| 3 | [`plans/2026-08-28-termif-03-desktop.md`](plans/2026-08-28-termif-03-desktop.md) — Electron desktop shell | 12 | **complete (2026-08-30)** — all 92 steps done, 184 tests green, build OK | — |
 | — | React Native mobile shell | — | **deferred, out of v1 scope** (spec §11) | — |
 
 Plan 1 goes first because it carries the largest risk — the Rust toolchain and
