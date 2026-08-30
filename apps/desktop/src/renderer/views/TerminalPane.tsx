@@ -41,6 +41,18 @@ export function TerminalPane({ tabId, sessions, active }: TerminalPaneProps) {
     term.loadAddon(fitAddon)
 
     term.open(element)
+    // Let Cmd/Ctrl+W and Cmd/Ctrl+K bubble to the window handler that closes
+    // the tab / toggles the palette — otherwise xterm would send 0x17 (Ctrl+W)
+    // to the PTY and the shortcut would appear dead.
+    const maybeAttach = (term as unknown as { attachCustomKeyEventHandler?: (cb: (e: KeyboardEvent) => boolean) => void })
+      .attachCustomKeyEventHandler
+    if (typeof maybeAttach === 'function') {
+      maybeAttach.call(term, (event) => {
+        const key = (event as KeyboardEvent).key.toLowerCase()
+        if (((event as KeyboardEvent).metaKey || (event as KeyboardEvent).ctrlKey) && (key === 'w' || key === 'k')) return false
+        return true
+      })
+    }
 
     // WebGL is a large throughput win but is unavailable in some VMs and
     // remote-desktop sessions; falling back to the DOM renderer is correct,

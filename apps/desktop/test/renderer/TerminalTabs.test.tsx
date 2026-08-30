@@ -47,4 +47,35 @@ describe('TerminalTabs', () => {
     expect(screen.getByRole('tab', { name: /web-1/ })).toBeInTheDocument()
     expect(screen.queryByText('+1')).not.toBeInTheDocument()
   })
+
+  it('Cmd/Ctrl+W closes the active tab (case-insensitive)', async () => {
+    const tabs = createTabStore()
+    const closeTab = vi.fn(async () => {})
+    const app = {
+      tabs,
+      sessions: {
+        onTabClosed: () => () => {},
+        onSessionState: () => () => {},
+        closeTab,
+        subscribeTab: () => () => {},
+        channelIdForTab: () => undefined,
+      },
+    } as unknown as App
+    render(<TerminalTabs app={app} />)
+    await act(async () => {
+      tabs.add({ id: 't1', title: 'web-1', sessionId: 1n })
+      tabs.activate('t1')
+    })
+    // let effect re-register with activeId
+    await act(async () => {})
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', metaKey: true, bubbles: true }))
+    await act(async () => {})
+    expect(closeTab).toHaveBeenCalledWith('t1')
+    closeTab.mockClear()
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'W', ctrlKey: true, bubbles: true }))
+    await act(async () => {})
+    expect(closeTab).toHaveBeenCalledWith('t1')
+  })
 })

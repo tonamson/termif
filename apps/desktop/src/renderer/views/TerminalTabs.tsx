@@ -39,11 +39,11 @@ export function TerminalTabs({ app }: { app: App }) {
       const mod = event.metaKey || event.ctrlKey
       if (!mod) return
 
-      if (event.key === 'k') {
+      if (event.key.toLowerCase() === 'k') {
         event.preventDefault()
         setPaletteOpen((open) => !open)
       }
-      if (event.key === 'w' && activeId !== null) {
+      if (event.key.toLowerCase() === 'w' && activeId !== null) {
         event.preventDefault()
         void app.sessions.closeTab(activeId)
       }
