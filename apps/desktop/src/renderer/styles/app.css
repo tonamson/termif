@@ -651,3 +651,23 @@ li[data-state='reconnecting'] .host-list__dot { background: var(--warn); }
 
 
 
+
+
+input.sftp__path {
+  background: var(--color-bg-input, rgba(0, 0, 0, 0.25));
+  color: var(--color-text-primary, #ffffff);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.15));
+  border-radius: var(--radius-sm, 4px);
+  padding: 4px 8px;
+  font-family: monospace;
+  font-size: 13px;
+  min-width: 260px;
+  max-width: 480px;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+input.sftp__path:focus {
+  border-color: var(--color-primary, #3b82f6);
+  background: var(--color-bg-input-focus, rgba(0, 0, 0, 0.4));
+}

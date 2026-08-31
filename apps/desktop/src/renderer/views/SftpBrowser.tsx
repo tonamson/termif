@@ -58,6 +58,11 @@ export function SftpBrowserView({
   const [confirming, setConfirming] = useState<string | null>(null)
   const [newDir, setNewDir] = useState('')
   const [dropping, setDropping] = useState(false)
+  const [inputPath, setInputPath] = useState(path)
+
+  useEffect(() => {
+    setInputPath(path)
+  }, [path])
 
   return (
     <section
@@ -82,7 +87,31 @@ export function SftpBrowserView({
         <button type="button" onClick={onUp}>
           {t('sftp.up')}
         </button>
-        <code className="sftp__path">{path}</code>
+        <input
+          type="text"
+          className="sftp__path"
+          value={inputPath}
+          aria-label="Current path"
+          onChange={(e) => setInputPath(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              const trimmed = inputPath.trim()
+              if (trimmed && trimmed !== path) {
+                onOpen(trimmed)
+              }
+            } else if (e.key === 'Escape') {
+              setInputPath(path)
+            }
+          }}
+          onBlur={() => {
+            const trimmed = inputPath.trim()
+            if (trimmed && trimmed !== path) {
+              onOpen(trimmed)
+            } else {
+              setInputPath(path)
+            }
+          }}
+        />
         <button type="button" onClick={onRefresh}>
           {t('sftp.refresh')}
         </button>
