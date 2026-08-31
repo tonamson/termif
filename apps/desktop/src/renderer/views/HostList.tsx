@@ -124,7 +124,7 @@ export function HostList({
                             title={t('host.editShort')}
                             onClick={() => onEdit(host.id)}
                           >
-                            <span aria-hidden="true"><Icon name="edit" size={16} /></span>
+                            <span aria-hidden="true"><Icon name="edit" size={18} /></span>
                           </button>
                           {confirming === host.id ? (
                             <>
