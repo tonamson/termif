@@ -116,7 +116,7 @@ export function HostList({
                             title={t('host.connect')}
                             onClick={() => onConnect(host.id)}
                           >
-                            <span aria-hidden="true">▸</span>
+                            <Icon name="terminal" size={16} />
                           </button>
                           <button
                             type="button"
@@ -149,7 +149,7 @@ export function HostList({
                               title={t('host.deleteShort')}
                               onClick={() => setConfirming(host.id)}
                             >
-                              <span aria-hidden="true">✕</span>
+                              <Icon name="delete" size={16} />
                             </button>
                           )}
                         </span>

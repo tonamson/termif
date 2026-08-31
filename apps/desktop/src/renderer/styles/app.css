@@ -234,15 +234,28 @@ li[data-state='reconnecting'] .host-list__dot { background: var(--warn); }
   display: flex;
   gap: var(--space-1);
 }
+.host-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .host-list__actions > button {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 4px;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  line-height: 1;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--color-text-muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.host-list__actions > button:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover, rgba(255, 255, 255, 0.08));
 }
 .host-list__empty {
   margin: auto;
